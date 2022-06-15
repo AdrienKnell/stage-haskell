@@ -62,3 +62,9 @@ instance Fractional (Stream Integer) where
 
 fibs3 :: Stream Integer
 fibs3 = x / (1 - x - x*x)
+
+gfBinaryWords :: Stream Integer
+gfBinaryWords = 1 / (1 - 2*x)
+
+gfBinaryWordsWithoutAAA :: Stream Integer
+gfBinaryWordsWithoutAAA = (1 + x + x*x) / (1 - x - x*x - x*x*x)
