@@ -68,3 +68,5 @@ gfBinaryWords = 1 / (1 - 2*x)
 
 gfBinaryWordsWithoutAAA :: Stream Integer
 gfBinaryWordsWithoutAAA = (1 + x + x*x) / (1 - x - x*x - x*x*x)
+
+
