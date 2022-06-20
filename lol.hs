@@ -7,9 +7,11 @@ class CombinatClass a where
   
 data Ast a = Eps
          | Z
+         | Scalar Integer
          | Union (Ast a) (Ast a)
          | Prod (Ast a) (Ast a)
          | Seq (Ast a)
+         | Power (Ast a) Integer
          | Name a
          | Rec (Ast a) (Ast a -> Ast a)
 
@@ -38,20 +40,42 @@ infixr 9 .=.
 binaryTrees :: Ast String
 binaryTrees = "B" .=. (\b -> Eps .+. Z .*. b .*. b)
 
-a = Prod Z Z
+binaryWords :: Ast String
+binaryWords = "BW" .=. (\b -> Seq (Z .+. Z))
 
 instance CombinatClass (Ast a) where
   gf Eps = 1 : repeat 0
   gf Z = 0 : 1 : repeat 0
   gf (Union a b) = zipWith (+) (gf a) (gf b)
+  gf (Scalar a) = a : repeat 0
+  gf (Power a 1) = gf a
+  gf (Power a i) = gf $ Prod a (Power a (i-1)) 
   gf (Prod a b) = [sum $ zipWith (*) (take n (gf a)) (reverse $ take n (gf b)) | n <- [1..]]
-  -- gf (Seq a) = gf (Union Eps (Prod a (Seq a)))
-  gf rule@(Rec name phi) = [last . take n . foldr (\n -> \currGf-> gf' currGf $ (phi rule)) (repeat 0) $ [1..n] | n <- [1..]] where
+  gf (Seq a) = gf (Union Eps (Prod a (Seq a)))
+  gf rule@(Rec name phi) = [last . take n . foldr (\n -> \currGf-> gf' currGf (phi rule)) (repeat 0) $ [1..n] | n <- [1..]] where
     gf' currGf (Rec name _) = currGf
     gf' _ Eps = 1 : repeat 0
     gf' _ Z = 0 : 1 : repeat 0
     gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
     gf' currGf (Prod a b) = [sum $ zipWith (*) (take n (gf' currGf a)) (reverse $ take n (gf' currGf b)) | n <- [1..]]
+    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> Seq a))))
+    
+indicatriceEuler :: Integer -> Int
+indicatriceEuler n = length [k | k <- [1..n], premierEntreEux n k]
+
+premierEntreEux :: Integer -> Integer -> Bool
+premierEntreEux 1 1 = True
+premierEntreEux a b = aux (diviseursWithoutOne a) (diviseursWithoutOne b) where
+  aux [] _ = True
+  aux (x:xs) ys
+    |x `elem` ys = False
+    |otherwise = True && (aux xs ys)
+
+diviseursWithoutOne :: Integer -> [Integer]
+diviseursWithoutOne a = [d | d<-[2..(div a 2)], (mod a d)==0] ++ [a]
+
+-- intersectLists :: [Integer] -> [Integer] -> [Integer]
+-- intersectLists xs =  
 
 class CombinatClassN a where
   gfN :: a -> Int -> GF
