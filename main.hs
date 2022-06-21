@@ -12,12 +12,15 @@ data Ast a = Eps
          | Prod (Ast a) (Ast a)
          | Seq (Ast a)
          | Power (Ast a) Integer
+         | PowerSet (Ast a)
          | Name a
          | Rec (Ast a) (Ast a -> Ast a)
 
 instance (Show a) => Show (Ast a) where
   show Z = "Z"
   show Eps = "Ɛ"
+  show (Scalar i) = show i
+  show (Power x i) = show x ++ "^" ++ show i
   show (Union x y) = "(" ++ (show x) ++ " + " ++ (show y) ++ ")"
   show (Prod x y) = "(" ++ (show x) ++ " * " ++ (show y) ++ ")"
   show (Seq x) = "Seq(" ++ (show x) ++ ")"
@@ -43,6 +46,9 @@ binaryTrees = "B" .=. (\b -> Eps .+. Z .*. b .*. b)
 binaryWords :: Ast String
 binaryWords = "BW" .=. (\b -> Seq (Z .+. Z))
 
+binaryWordsStartingWithABA :: Ast String
+binaryWordsStartingWithABA = (Power Z 3) .*. (Seq (Z .+. Z))
+
 instance CombinatClass (Ast a) where
   gf Eps = 1 : repeat 0
   gf Z = 0 : 1 : repeat 0
@@ -50,15 +56,19 @@ instance CombinatClass (Ast a) where
   gf (Scalar a) = a : repeat 0
   gf (Power a 1) = gf a
   gf (Power a i) = gf $ Prod a (Power a (i-1)) 
+  -- gf (PowerSet a) =  
   gf (Prod a b) = [sum $ zipWith (*) (take n (gf a)) (reverse $ take n (gf b)) | n <- [1..]]
-  gf (Seq a) = gf (Union Eps (Prod a (Seq a)))
+  gf (Seq a) = gf $ Rec Z (\b -> Seq a)
   gf rule@(Rec name phi) = [last . take n . foldr (\n -> \currGf-> gf' currGf (phi rule)) (repeat 0) $ [1..n] | n <- [1..]] where
     gf' currGf (Rec name _) = currGf
     gf' _ Eps = 1 : repeat 0
     gf' _ Z = 0 : 1 : repeat 0
+    gf' _ (Scalar a) = a : repeat 0
+    gf' currGf (Power a 1) = gf' currGf a
+    gf' currGf (Power a i) = gf' currGf $ Prod a (Power a (i-1)) 
     gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
     gf' currGf (Prod a b) = [sum $ zipWith (*) (take n (gf' currGf a)) (reverse $ take n (gf' currGf b)) | n <- [1..]]
-    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> Seq a))))
+    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
     
 indicatriceEuler :: Integer -> Int
 indicatriceEuler n = length [k | k <- [1..n], premierEntreEux n k]
@@ -73,9 +83,6 @@ premierEntreEux a b = aux (diviseursWithoutOne a) (diviseursWithoutOne b) where
 
 diviseursWithoutOne :: Integer -> [Integer]
 diviseursWithoutOne a = [d | d<-[2..(div a 2)], (mod a d)==0] ++ [a]
-
--- intersectLists :: [Integer] -> [Integer] -> [Integer]
--- intersectLists xs =  
 
 class CombinatClassN a where
   gfN :: a -> Int -> GF
@@ -120,6 +127,9 @@ fibo = z / (1 - z - z*z)
 
 gfBinaryWords :: Stream Integer
 gfBinaryWords = 1 / (1 - 2*z)
+
+gfBinaryWordsStartingABA :: Stream Integer
+gfBinaryWordsStartingABA = (z*z*z)*(1/(1-2*z))
 
 --TOOLS --
 
