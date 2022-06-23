@@ -1,18 +1,20 @@
 {-# LANGUAGE FlexibleInstances #-}
+import Control.Monad.Cont
 
-type GF = [Integer]
+type GF = [Int]
 
 class CombinatClass a where
   gf :: a -> GF
   
 data Ast a = Eps
          | Z
-         | Scalar Integer
+         | Scalar Int
          | Union (Ast a) (Ast a)
          | Prod (Ast a) (Ast a)
          | Seq (Ast a)
-         | Power (Ast a) Integer
+         | Power (Ast a) Int
          | PowerSet (Ast a)
+         | Derive (Ast a)
          | Name a
          | Rec (Ast a) (Ast a -> Ast a)
 
@@ -24,6 +26,7 @@ instance (Show a) => Show (Ast a) where
   show (Union x y) = "(" ++ (show x) ++ " + " ++ (show y) ++ ")"
   show (Prod x y) = "(" ++ (show x) ++ " * " ++ (show y) ++ ")"
   show (Seq x) = "Seq(" ++ (show x) ++ ")"
+  show (Derive x) = "Derive(" ++ (show x) ++ ")"  
   show (Name x) = show x
   show (Rec x f) = show x ++ " = " ++ show (f x)
 
@@ -92,12 +95,49 @@ instance CombinatClassN (Ast a) where
   gfN Z n = take (n+1) $ 0 : 1 : repeat 0
   gfN (Union a b) n = take (n+1) $ zipWith (+) (gf a) (gf b)
   gfN (Prod a b) n = [sum $ zipWith (*) (take k (gf a)) (reverse $ take k (gf b)) | k <- [1..n+1]]
+  gfN (Scalar a) n = take (n+1) $ a : repeat 0
+  gfN (Power a 1) n = take (n+1) $ gfN a n
+  gfN (Power a i) n = take (n+1) $ gf (Prod a (Power a (i-1)))
+  gfN (Seq a) n = take (n+1) $ gf (Rec Z (\b -> Seq a))
+  gfN (Derive a) n = tail $ take (n+2) $ gfN a (n+1)
   gfN rule@(Rec name phi) n = take (n+1) $ foldr (\n -> \currGf-> gf' currGf $ (phi rule)) (repeat 0) [1..n+1] where
     gf' currGf (Rec name _) = currGf
     gf' _ Eps = 1 : repeat 0
     gf' _ Z = 0 : 1 : repeat 0
     gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
     gf' currGf (Prod a b) = [sum $ zipWith (*) (take n (gf' currGf a)) (reverse $ take n (gf' currGf b)) | n <- [1..]]
+    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
+  
+class CombinatClassEGFN a where
+  gfEGFN :: a -> Int -> GF
+
+instance CombinatClassEGFN (Ast a) where
+  gfEGFN Eps n = take (n+1) $ 1 : repeat 0
+  gfEGFN Z n = take (n+1) $ 0 : 1 : repeat 0
+  gfEGFN (Union a b) n = take (n+1) $ zipWith (+) (gf a) (gf b)
+  gfEGFN (Prod a b) n = applyCbinomial [sum $ zipWith (*) ((take k (gf a))) (reverse $ take k (gf b)) | k <- [1..n+1]] 0 (n+1)
+  gfEGFN (Scalar a) n = take (n+1) $ a : repeat 0
+  gfEGFN (Power a 1) n = take (n+1) $ gfN a n
+  gfEGFN (Power a i) n = take (n+1) $ gfN (Prod a (Power a (i-1))) n 
+  gfEGFN (Seq a) n = take (n+1) $ gfN (Rec Z (\b -> Seq a)) n 
+  gfEGFN rule@(Rec name phi) n = take (n+1) $ foldr (\x -> \currGf-> gf' currGf $ (phi rule)) (repeat 0) [1..n+1] where
+    gf' currGf (Rec name _) = currGf
+    gf' _ Eps = 1 : repeat 0
+    gf' _ Z = 0 : 1 : repeat 0
+    gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
+    gf' currGf (Prod a b) = [sum $ zipWith (*) (applyCbinomial (take k (gf' currGf a)) 0 k) (reverse $ take k (gf' currGf b)) | k <- [1..]]
+    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
+
+coefBinomial :: Int -> Int -> Int
+coefBinomial k n = div (product [(n-k+1)..n]) (factorial k)
+
+factorial :: Int -> Int
+factorial 0 = 1
+factorial x = (factorial (x-1)) * x
+
+applyCbinomial :: [Int] -> Int -> Int -> [Int]
+applyCbinomial [] _ _ =  []
+applyCbinomial (x:xs) index len = x * (coefBinomial index len) : (applyCbinomial xs (index+1) len)  
 
 --------------------------------------------------------------------
 
