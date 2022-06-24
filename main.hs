@@ -52,6 +52,9 @@ binaryWords = "BW" .=. (\b -> Seq (Z .+. Z))
 binaryWordsStartingWithABA :: Ast String
 binaryWordsStartingWithABA = (Power Z 3) .*. (Seq (Z .+. Z))
 
+multiplyZtimesZ :: Ast String
+multiplyZtimesZ = Z .*. Z
+
 instance CombinatClass (Ast a) where
   gf Eps = 1 : repeat 0
   gf Z = 0 : 1 : repeat 0
@@ -115,18 +118,18 @@ instance CombinatClassEGFN (Ast a) where
   gfEGFN Eps n = take (n+1) $ 1 : repeat 0
   gfEGFN Z n = take (n+1) $ 0 : 1 : repeat 0
   gfEGFN (Union a b) n = take (n+1) $ zipWith (+) (gf a) (gf b)
-  gfEGFN (Prod a b) n = applyCbinomial [sum $ zipWith (*) ((take k (gf a))) (reverse $ take k (gf b)) | k <- [1..n+1]] 0 (n+1)
+  gfEGFN (Prod a b) n = [sum $ zipWith (*) (applyCbinomial (take n' (gf a)) 0 n') (reverse $ take n' (gf b)) | n' <- [1..n+1]]
   gfEGFN (Scalar a) n = take (n+1) $ a : repeat 0
   gfEGFN (Power a 1) n = take (n+1) $ gfN a n
   gfEGFN (Power a i) n = take (n+1) $ gfN (Prod a (Power a (i-1))) n 
   gfEGFN (Seq a) n = take (n+1) $ gfN (Rec Z (\b -> Seq a)) n 
-  gfEGFN rule@(Rec name phi) n = take (n+1) $ foldr (\x -> \currGf-> gf' currGf (phi rule) (x+1)) (repeat 0) [1..n+1] where
-    gf' currGf (Rec name _) x = currGf
-    gf' _ Eps x = 1 : repeat 0
-    gf' _ Z x = 0 : 1 : repeat 0
-    gf' currGf (Union a b) x = zipWith (+) (gf' currGf a x) (gf' currGf b x)
-    gf' currGf (Prod a b) x = [sum $ zipWith (*) (applyCbinomial (take k (gf' currGf a x)) 0 x) (reverse $ take k (gf' currGf b x)) | k <- [1..]]
-    gf' currGf (Seq a) x = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) x -- (Rec Z (\a -> a)) because we don't care 
+  gfEGFN rule@(Rec name phi) n = take (n+1) $ foldr (\x -> \currGf-> gf' currGf (phi rule) x) (repeat 0) [1..n+1] where
+    gf' currGf (Rec name _) = currGf
+    gf' _ Eps = 1 : repeat 0
+    gf' _ Z = 0 : 1 : repeat 0
+    gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
+    gf' currGf (Prod a b) = [sum $ zipWith (*) (applyCbinomial (take n (gf' currGf a)) 0 n) (reverse $ take n (gf' currGf b)) | n <- [1..]]
+    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
 
 coefBinomial :: Int -> Int -> Int
 coefBinomial k n = div (product [(n-k+1)..n]) (factorial k)
