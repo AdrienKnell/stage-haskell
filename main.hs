@@ -53,7 +53,7 @@ binaryWordsStartingWithABA :: Ast String
 binaryWordsStartingWithABA = (Power Z 3) .*. (Seq (Z .+. Z))
 
 multiplyZtimesZ :: Ast String
-multiplyZtimesZ = Z .*. Z
+multiplyZtimesZ = Z .*. Z .*. Z .*. Z .*. Z .*. Z
 
 instance CombinatClass (Ast a) where
   gf Eps = 1 : repeat 0
@@ -118,21 +118,24 @@ instance CombinatClassEGFN (Ast a) where
   gfEGFN Eps n = take (n+1) $ 1 : repeat 0
   gfEGFN Z n = take (n+1) $ 0 : 1 : repeat 0
   gfEGFN (Union a b) n = take (n+1) $ zipWith (+) (gf a) (gf b)
-  gfEGFN (Prod a b) n = [sum $ zipWith (*) (applyCbinomial (take n' (gf a)) 0 n') (reverse $ take n' (gf b)) | n' <- [1..n+1]]
+  gfEGFN (Prod a b) n = [sum $ zipWith (*) (take n' (gf a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gf b))) | n' <- [1..n+1]]
   gfEGFN (Scalar a) n = take (n+1) $ a : repeat 0
   gfEGFN (Power a 1) n = take (n+1) $ gfN a n
   gfEGFN (Power a i) n = take (n+1) $ gfN (Prod a (Power a (i-1))) n 
   gfEGFN (Seq a) n = take (n+1) $ gfN (Rec Z (\b -> Seq a)) n 
-  gfEGFN rule@(Rec name phi) n = take (n+1) $ foldr (\x -> \currGf-> gf' currGf (phi rule) x) (repeat 0) [1..n+1] where
+  gfEGFN rule@(Rec name phi) n = take (n+1) $ foldr (\x -> \currGf-> gf' currGf (phi rule)) (repeat 0) [1..n+1] where
     gf' currGf (Rec name _) = currGf
     gf' _ Eps = 1 : repeat 0
     gf' _ Z = 0 : 1 : repeat 0
     gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
-    gf' currGf (Prod a b) = [sum $ zipWith (*) (applyCbinomial (take n (gf' currGf a)) 0 n) (reverse $ take n (gf' currGf b)) | n <- [1..]]
+    gf' currGf (Prod a b) = [sum $ zipWith (*) (take n' (gf' currGf a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gf' currGf b))) | n' <- [1..]]
     gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
 
 coefBinomial :: Int -> Int -> Int
 coefBinomial k n = div (product [(n-k+1)..n]) (factorial k)
+
+coefBinomialArray :: Int -> [Int]
+coefBinomialArray n = [coefBinomial k n | k<-[0..n]]
 
 factorial :: Int -> Int
 factorial 0 = 1
