@@ -1,10 +1,4 @@
--- {-# LANGUAGE FlexibleInstances #-}
--- import Control.Monad.Cont
-
 type GF = [Int]
-
-class CombinatClass a where
-  gf :: a -> GF
   
 data Ast a = Eps
          | Z
@@ -57,53 +51,18 @@ binaryWordsStartingWithABA = (Power Z 3) .*. (Seq (Z .+. Z))
 multiplyZtimesZ :: Ast String
 multiplyZtimesZ = Z .*. Z .*. Z .*. Z .*. Z .*. Z
 
-instance CombinatClass (Ast a) where
-  gf Eps = 1 : repeat 0
-  gf Z = 0 : 1 : repeat 0
-  gf (Union a b) = zipWith (+) (gf a) (gf b)
-  gf (Scalar a) = a : repeat 0
-  gf (Power a 1) = gf a
-  gf (Power a i) = gf $ Prod a (Power a (i-1)) 
-  -- gf (PowerSet a) =  
-  gf (Prod a b) = [sum $ zipWith (*) (take n (gf a)) (reverse $ take n (gf b)) | n <- [1..]]
-  gf (Seq a) = gf $ Rec Z (\b -> Seq a)
-  gf rule@(Rec name phi) = [last . take n . foldr (\n -> \currGf-> gf' currGf (phi rule)) (repeat 0) $ [1..n] | n <- [1..]] where
-    gf' currGf (Rec name _) = currGf
-    gf' _ Eps = 1 : repeat 0
-    gf' _ Z = 0 : 1 : repeat 0
-    gf' _ (Scalar a) = a : repeat 0
-    gf' currGf (Power a 1) = gf' currGf a
-    gf' currGf (Power a i) = gf' currGf $ Prod a (Power a (i-1)) 
-    gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
-    gf' currGf (Prod a b) = [sum $ zipWith (*) (take n (gf' currGf a)) (reverse $ take n (gf' currGf b)) | n <- [1..]]
-    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
-    
-indicatriceEuler :: Integer -> Int
-indicatriceEuler n = length [k | k <- [1..n], premierEntreEux n k]
-
-premierEntreEux :: Integer -> Integer -> Bool
-premierEntreEux 1 1 = True
-premierEntreEux a b = aux (diviseursWithoutOne a) (diviseursWithoutOne b) where
-  aux [] _ = True
-  aux (x:xs) ys
-    |x `elem` ys = False
-    |otherwise = True && (aux xs ys)
-
-diviseursWithoutOne :: Integer -> [Integer]
-diviseursWithoutOne a = [d | d<-[2..(div a 2)], (mod a d)==0] ++ [a]
-
 class CombinatClassN a where
   gfN :: a -> Int -> GF
 
 instance CombinatClassN (Ast a) where
   gfN Eps n = take (n+1) $ 1 : repeat 0
   gfN Z n = take (n+1) $ 0 : 1 : repeat 0
-  gfN (Union a b) n = take (n+1) $ zipWith (+) (gf a) (gf b)
-  gfN (Prod a b) n = [sum $ zipWith (*) (take k (gf a)) (reverse $ take k (gf b)) | k <- [1..n+1]]
+  gfN (Union a b) n = take (n+1) $ zipWith (+) (gfN a (n+1)) (gfN b (n+1))
+  gfN (Prod a b) n = [sum $ zipWith (*) (take k (gfN a (n+1))) (reverse $ take k (gfN b (n+1))) | k <- [1..n+1]]
   gfN (Scalar a) n = take (n+1) $ a : repeat 0
   gfN (Power a 1) n = take (n+1) $ gfN a n
-  gfN (Power a i) n = take (n+1) $ gf (Prod a (Power a (i-1)))
-  gfN (Seq a) n = take (n+1) $ gf (Rec Z (\b -> Seq a))
+  gfN (Power a i) n = take (n+1) $ gfN (Prod a (Power a (i-1))) (n+1)
+  gfN (Seq a) n = take (n+1) $ gfN (Rec Z (\b -> Seq a)) (n+1)
   gfN (Derive a) n = tail $ take (n+2) $ gfN a (n+1)
   gfN rule@(Rec name phi) n = take (n+1) $ foldr (\n -> \currGf-> gf' currGf $ (phi rule)) (repeat 0) [1..n+1] where
     gf' currGf (Rec name _) = currGf
@@ -152,45 +111,52 @@ applyCbinomial :: [Int] -> Int -> Int -> [Int]
 applyCbinomial [] _ _ =  []
 applyCbinomial (x:xs) index len = x * (coefBinomial index len) : (applyCbinomial xs (index+1) len)  
 
---------------------------------------------------------------------
 
--- data Stream a = Cons a (Stream a) -- new structure to represent infinite lists.
 
--- streamToList :: Stream a -> [a]
--- streamToList (Cons c s) = c : streamToList s
+main :: IO ()
+main = 
+  do
+    putStr("---------------------------------------------------\n")
+    putStr("|                       START                     |\n")
+    putStr("---------------------------------------------------\n")
+    print "UNLABELED binary Trees: " 
+    print $ gfN binaryTrees 10
+    putStr("\n")
+    print "UNLABELED binary Words : "
+    print $ gfN binaryWords 10 
+    putStr("\n")
+    print "UNLABELED binary Words not starting by ABA : "
+    print $ gfN binaryWordsStartingWithABA 10
+    putStr("\n---------------------------------------------------- \n")
+    print "LABELED binary Trees: " 
+    print $ gfEGFN binaryTrees 10
+    putStr("\n")
+    print "LABELED binary Words : "
+    print $ gfEGFN binaryWords 10 
+    putStr("\n")
+    print "LABELED binary Words not starting by ABA : "
+    print $ gfEGFN binaryWordsStartingWithABA 10
 
--- instance Show a => Show (Stream a) where
---     show c = show $ take 50 $ streamToList c -- To show the 50 first elements of the infinite list.
 
--- z :: Stream Integer
--- z = Cons 0 (Cons 1 (streamRepeat 0))
+-- class CombinatClass a where
+--   gf :: a -> GF
 
--- instance Num (Stream Integer) where
---     fromInteger x = Cons x (streamRepeat 0)
---     (Cons v1 s1) + (Cons v2 s2) = Cons (v1+v2) (s1 + s2)
---     negate (Cons v s) = Cons (negate v) (negate s)
---     (Cons v1 s1) * (Cons v2 s2) = Cons (v1*v2) ((streamMap (*v1) s2) + (s1 * (Cons v2 s2)))
-
--- instance Fractional (Stream Integer) where
---   (Cons x xs) / (Cons y ys) = q
---     where q = Cons (x `div` y) (streamMap (`div` y) (xs - q * ys))
-
--- fibo :: Stream Integer
--- fibo = z / (1 - z - z*z)
-
--- gfBinaryWords :: Stream Integer
--- gfBinaryWords = 1 / (1 - 2*z)
-
--- gfBinaryWordsStartingABA :: Stream Integer
--- gfBinaryWordsStartingABA = (z*z*z)*(1/(1-2*z))
-
--- --TOOLS --
-
--- streamRepeat :: a -> Stream a
--- streamRepeat x = Cons x (streamRepeat x)
-
--- streamMap :: (a -> b) -> Stream a -> Stream b
--- streamMap f (Cons c v) = Cons (f c) (streamMap f v)
-
--- streamFromSeed :: (a -> a) -> a -> Stream a
--- streamFromSeed f init = Cons init (streamFromSeed f (f init)) 
+-- instance CombinatClass (Ast a) where
+--   gf Eps = 1 : repeat 0
+--   gf Z = 0 : 1 : repeat 0
+--   gf (Union a b) = zipWith (+) (gf a) (gf b)
+--   gf (Scalar a) = a : repeat 0
+--   gf (Power a 1) = gf a
+--   gf (Power a i) = gf $ Prod a (Power a (i-1)) 
+--   gf (Prod a b) = [sum $ zipWith (*) (take n (gf a)) (reverse $ take n (gf b)) | n <- [1..]]
+--   gf (Seq a) = gf $ Rec Z (\b -> Seq a)
+--   gf rule@(Rec name phi) = [last . take n . foldr (\n -> \currGf-> gf' currGf (phi rule)) (repeat 0) $ [1..n] | n <- [1..]] where
+--     gf' currGf (Rec name _) = currGf
+--     gf' _ Eps = 1 : repeat 0
+--     gf' _ Z = 0 : 1 : repeat 0
+--     gf' _ (Scalar a) = a : repeat 0
+--     gf' currGf (Power a 1) = gf' currGf a
+--     gf' currGf (Power a i) = gf' currGf $ Prod a (Power a (i-1)) 
+--     gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
+--     gf' currGf (Prod a b) = [sum $ zipWith (*) (take n (gf' currGf a)) (reverse $ take n (gf' currGf b)) | n <- [1..]]
+--     gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
