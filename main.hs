@@ -63,6 +63,7 @@ instance CombinatClassN (Ast a) where
   gfN (Power a 1) n = take (n+1) $ gfN a n
   gfN (Power a i) n = take (n+1) $ gfN (Prod a (Power a (i-1))) (n+1)
   gfN (Seq a) n = take (n+1) $ gfN (Rec Z (\b -> Seq a)) (n+1)
+  gfN (Cycle a) n = 1 : (take (n+1) $ gfN (Prod (Derive a) (Seq a)) n)
   gfN (Derive a) n = tail $ take (n+2) $ gfN a (n+1)
   gfN rule@(Rec name phi) n = take (n+1) $ foldr (\n -> \currGf-> gf' currGf $ (phi rule)) (repeat 0) [1..n+1] where
     gf' currGf (Rec name _) = currGf
@@ -86,7 +87,7 @@ instance CombinatClassEGFN (Ast a) where
   gfEGFN (Derive a) n = tail $ gfEGFN a (n+1)
   gfEGFN (Seq a) n = gfEGFN (Rec Z (\b -> Seq a)) n
   gfEGFN (Set a) n = gfEGFN (Rec Z (\b -> Set a)) n
-  gfEGFN (Cycle a) n = (take (n+1) $ gfEGFN (Prod (Derive a) (Seq a)) n)
+  gfEGFN (Cycle a) n = 0 : (take (n+1) $ gfEGFN (Prod (Derive a) (Seq a)) n)
   gfEGFN rule@(Rec name phi) n = take (n+1) $ foldr (\x -> \currGf-> gf' currGf (phi rule)) (repeat 0) [1..n+1] where
     gf' currGf (Rec name _) = currGf
     gf' _ Eps = 1 : repeat 0
