@@ -1,5 +1,5 @@
-{-# LANGUAGE FlexibleInstances #-}
-import Control.Monad.Cont
+-- {-# LANGUAGE FlexibleInstances #-}
+-- import Control.Monad.Cont
 
 type GF = [Int]
 
@@ -15,6 +15,8 @@ data Ast a = Eps
          | Power (Ast a) Int
          | PowerSet (Ast a)
          | Derive (Ast a)
+         | Set (Ast a)
+         | Cycle (Ast a)
          | Name a
          | Rec (Ast a) (Ast a -> Ast a)
 
@@ -117,19 +119,24 @@ class CombinatClassEGFN a where
 instance CombinatClassEGFN (Ast a) where
   gfEGFN Eps n = take (n+1) $ 1 : repeat 0
   gfEGFN Z n = take (n+1) $ 0 : 1 : repeat 0
-  gfEGFN (Union a b) n = take (n+1) $ zipWith (+) (gf a) (gf b)
-  gfEGFN (Prod a b) n = [sum $ zipWith (*) (take n' (gf a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gf b))) | n' <- [1..n+1]]
+  gfEGFN (Union a b) n = take (n+1) $ zipWith (+) (gfEGFN a (n+1)) (gfEGFN b (n+1))
+  gfEGFN (Prod a b) n = [sum $ zipWith (*) (take n' (gfEGFN a (n+1))) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gfEGFN b (n+1)))) | n' <- [1..n+1]]
   gfEGFN (Scalar a) n = take (n+1) $ a : repeat 0
-  gfEGFN (Power a 1) n = take (n+1) $ gfN a n
-  gfEGFN (Power a i) n = take (n+1) $ gfN (Prod a (Power a (i-1))) n 
-  gfEGFN (Seq a) n = take (n+1) $ gfN (Rec Z (\b -> Seq a)) n 
+  gfEGFN (Power a 1) n = take (n+1) $ gfEGFN a n
+  gfEGFN (Power a i) n = take (n+1) $ gfEGFN (Prod a (Power a (i-1))) n 
+  gfEGFN (Derive a) n = tail $ gfEGFN a (n+1)
+  gfEGFN (Seq a) n = gfEGFN (Rec Z (\b -> Seq a)) n
+  gfEGFN (Set a) n = gfEGFN (Rec Z (\b -> Set a)) n
+  gfEGFN (Cycle a) n = (take (n+1) $ gfEGFN (Prod (Derive a) (Seq a)) n)
   gfEGFN rule@(Rec name phi) n = take (n+1) $ foldr (\x -> \currGf-> gf' currGf (phi rule)) (repeat 0) [1..n+1] where
     gf' currGf (Rec name _) = currGf
     gf' _ Eps = 1 : repeat 0
     gf' _ Z = 0 : 1 : repeat 0
+    gf' currGf (Derive a) = tail $ gf' currGf a 
     gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
     gf' currGf (Prod a b) = [sum $ zipWith (*) (take n' (gf' currGf a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gf' currGf b))) | n' <- [1..]]
     gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
+    gf' currGf (Set a) = gf' currGf (Prod (Derive a) (Rec Z (\a -> a)))
 
 coefBinomial :: Int -> Int -> Int
 coefBinomial k n = div (product [(n-k+1)..n]) (factorial k)
@@ -147,43 +154,43 @@ applyCbinomial (x:xs) index len = x * (coefBinomial index len) : (applyCbinomial
 
 --------------------------------------------------------------------
 
-data Stream a = Cons a (Stream a) -- new structure to represent infinite lists.
+-- data Stream a = Cons a (Stream a) -- new structure to represent infinite lists.
 
-streamToList :: Stream a -> [a]
-streamToList (Cons c s) = c : streamToList s
+-- streamToList :: Stream a -> [a]
+-- streamToList (Cons c s) = c : streamToList s
 
-instance Show a => Show (Stream a) where
-    show c = show $ take 50 $ streamToList c -- To show the 50 first elements of the infinite list.
+-- instance Show a => Show (Stream a) where
+--     show c = show $ take 50 $ streamToList c -- To show the 50 first elements of the infinite list.
 
-z :: Stream Integer
-z = Cons 0 (Cons 1 (streamRepeat 0))
+-- z :: Stream Integer
+-- z = Cons 0 (Cons 1 (streamRepeat 0))
 
-instance Num (Stream Integer) where
-    fromInteger x = Cons x (streamRepeat 0)
-    (Cons v1 s1) + (Cons v2 s2) = Cons (v1+v2) (s1 + s2)
-    negate (Cons v s) = Cons (negate v) (negate s)
-    (Cons v1 s1) * (Cons v2 s2) = Cons (v1*v2) ((streamMap (*v1) s2) + (s1 * (Cons v2 s2)))
+-- instance Num (Stream Integer) where
+--     fromInteger x = Cons x (streamRepeat 0)
+--     (Cons v1 s1) + (Cons v2 s2) = Cons (v1+v2) (s1 + s2)
+--     negate (Cons v s) = Cons (negate v) (negate s)
+--     (Cons v1 s1) * (Cons v2 s2) = Cons (v1*v2) ((streamMap (*v1) s2) + (s1 * (Cons v2 s2)))
 
-instance Fractional (Stream Integer) where
-  (Cons x xs) / (Cons y ys) = q
-    where q = Cons (x `div` y) (streamMap (`div` y) (xs - q * ys))
+-- instance Fractional (Stream Integer) where
+--   (Cons x xs) / (Cons y ys) = q
+--     where q = Cons (x `div` y) (streamMap (`div` y) (xs - q * ys))
 
-fibo :: Stream Integer
-fibo = z / (1 - z - z*z)
+-- fibo :: Stream Integer
+-- fibo = z / (1 - z - z*z)
 
-gfBinaryWords :: Stream Integer
-gfBinaryWords = 1 / (1 - 2*z)
+-- gfBinaryWords :: Stream Integer
+-- gfBinaryWords = 1 / (1 - 2*z)
 
-gfBinaryWordsStartingABA :: Stream Integer
-gfBinaryWordsStartingABA = (z*z*z)*(1/(1-2*z))
+-- gfBinaryWordsStartingABA :: Stream Integer
+-- gfBinaryWordsStartingABA = (z*z*z)*(1/(1-2*z))
 
---TOOLS --
+-- --TOOLS --
 
-streamRepeat :: a -> Stream a
-streamRepeat x = Cons x (streamRepeat x)
+-- streamRepeat :: a -> Stream a
+-- streamRepeat x = Cons x (streamRepeat x)
 
-streamMap :: (a -> b) -> Stream a -> Stream b
-streamMap f (Cons c v) = Cons (f c) (streamMap f v)
+-- streamMap :: (a -> b) -> Stream a -> Stream b
+-- streamMap f (Cons c v) = Cons (f c) (streamMap f v)
 
-streamFromSeed :: (a -> a) -> a -> Stream a
-streamFromSeed f init = Cons init (streamFromSeed f (f init)) 
+-- streamFromSeed :: (a -> a) -> a -> Stream a
+-- streamFromSeed f init = Cons init (streamFromSeed f (f init)) 
