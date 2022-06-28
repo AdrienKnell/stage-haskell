@@ -1,3 +1,14 @@
+------------------------------------------------------------------------------------
+
+
+
+------- Once you've compiled the file, enter "main" to see the basic results.-------
+
+
+
+------------------------------------------------------------------------------------
+
+
 type GF = [Int]
   
 data Ast a = Eps
@@ -124,25 +135,25 @@ main =
     putStr("|                       START                     |\n")
     putStr("---------------------------------------------------\n")
     print "UNLABELED binary Trees: " 
-    print $ gfN binaryTrees 10
+    print $ gfN binaryTrees 15
     putStr("\n")
     print "UNLABELED binary Words : "
-    print $ gfN binaryWords 10 
+    print $ gfN binaryWords 15
     putStr("\n")
     print "UNLABELED binary Words starting by ABA : "
-    print $ gfN binaryWordsStartingWithABA 10
+    print $ gfN binaryWordsStartingWithABA 15
     putStr("\n---------------------------------------------------- \n")
     print "LABELED binary Trees: " 
-    print $ gfEGFN binaryTrees 10
+    print $ gfEGFN binaryTrees 12
     putStr("\n")
     print "LABELED binary Words : "
-    print $ gfEGFN binaryWords 10 
+    print $ gfEGFN binaryWords 12
     putStr("\n")
     print "LABELED binary Words starting by ABA : "
-    print $ gfEGFN binaryWordsStartingWithABA 10
+    print $ gfEGFN binaryWordsStartingWithABA 12
     putStr("\n")
-    print "LABELED Set (Cycle z) : "
-    print $ gfEGFN (Set (Cycle Z)) 15
+    print "LABELED Set (Cycle z) : (the first coefficient is probably wrong ?) "
+    print $ gfEGFN (Set (Cycle Z)) 12
 
 
 -- class CombinatClass a where
