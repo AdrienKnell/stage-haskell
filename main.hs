@@ -13,6 +13,7 @@ data Ast a = Eps
          | Cycle (Ast a)
          | Name a
          | Rec (Ast a) (Ast a -> Ast a)
+         | JoyalRec [Int]
 
 instance (Show a) => Show (Ast a) where
   show Z = "Z"
@@ -86,17 +87,19 @@ instance CombinatClassEGFN (Ast a) where
   gfEGFN (Power a i) n = take (n+1) $ gfEGFN (Prod a (Power a (i-1))) n 
   gfEGFN (Derive a) n = tail $ gfEGFN a (n+1)
   gfEGFN (Seq a) n = gfEGFN (Rec Z (\b -> Seq a)) n
-  gfEGFN (Set a) n = gfEGFN (Rec Z (\b -> Set a)) n
+  gfEGFN (Set a) n = 0 : gfEGFN (Rec Z (\b -> Set a)) n
   gfEGFN (Cycle a) n = 0 : (take (n+1) $ gfEGFN (Prod (Derive a) (Seq a)) n)
   gfEGFN rule@(Rec name phi) n = take (n+1) $ foldr (\x -> \currGf-> gf' currGf (phi rule)) (repeat 0) [1..n+1] where
     gf' currGf (Rec name _) = currGf
+    gf' currGf (JoyalRec l) = 1 : currGf
     gf' _ Eps = 1 : repeat 0
     gf' _ Z = 0 : 1 : repeat 0
     gf' currGf (Derive a) = tail $ gf' currGf a 
     gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
     gf' currGf (Prod a b) = [sum $ zipWith (*) (take n' (gf' currGf a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gf' currGf b))) | n' <- [1..]]
-    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
-    gf' currGf (Set a) = gf' currGf (Prod (Derive a) (Rec Z (\a -> a)))
+    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (JoyalRec [1]))) -- (Rec Z (\a -> a)) because we don't care 
+    gf' currGf (Cycle a) = 0 : gf' currGf (Prod (Derive a) (Seq a))
+    gf' currGf (Set a) = gf' currGf (Prod (Derive a) (JoyalRec [1]))
 
 coefBinomial :: Int -> Int -> Int
 coefBinomial k n = div (product [(n-k+1)..n]) (factorial k)
@@ -126,7 +129,7 @@ main =
     print "UNLABELED binary Words : "
     print $ gfN binaryWords 10 
     putStr("\n")
-    print "UNLABELED binary Words not starting by ABA : "
+    print "UNLABELED binary Words starting by ABA : "
     print $ gfN binaryWordsStartingWithABA 10
     putStr("\n---------------------------------------------------- \n")
     print "LABELED binary Trees: " 
@@ -135,8 +138,11 @@ main =
     print "LABELED binary Words : "
     print $ gfEGFN binaryWords 10 
     putStr("\n")
-    print "LABELED binary Words not starting by ABA : "
+    print "LABELED binary Words starting by ABA : "
     print $ gfEGFN binaryWordsStartingWithABA 10
+    putStr("\n")
+    print "LABELED Set (Cycle z) : "
+    print $ gfEGFN (Set (Cycle Z)) 15
 
 
 -- class CombinatClass a where
