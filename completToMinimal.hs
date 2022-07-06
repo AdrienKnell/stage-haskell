@@ -1,4 +1,4 @@
-import Data.Map
+import qualified Data.Map as M
 
 type GF = [Int]
 
@@ -17,7 +17,7 @@ data EquationAst =
   | Cycle EquationAst
   deriving (Ord, Eq, Show)
 
-type Specification = Map EquationAst EquationAst
+type Specification = M.Map EquationAst EquationAst
 
 data MinimalAst = 
   EpsM
@@ -29,8 +29,8 @@ data MinimalAst =
   | RuleM EquationAst
   deriving (Ord, Eq, Show)
  
-type MinSpec = Map EquationAst MinimalAst
-type MinSpecGF = Map MinimalAst [Int]
+type MinSpec = M.Map EquationAst MinimalAst
+type MinSpecGF = M.Map EquationAst [Int]
 
 
 -- instance (Show a) => Show (Spec a) where
@@ -60,19 +60,19 @@ type MinSpecGF = Map MinimalAst [Int]
 -- gfEGFN' dicoGF (RuleM a) = 
 
 evalEq :: MinSpecGF -> Int -> MinimalAst -> GF
-evalEq dicoGF n EpsM = Prelude.take (n+1) $ 1 : repeat 0
-evalEq dicoGF n ZM = Prelude.take (n+1) $ 0 : 1 : repeat 0
-evalEq dicoGF n (UnionM a b) = Prelude.take (n+1) $ zipWith (+) (evalEq a (n+1)) (evalEq b (n+1))
-evalEq dicoGF n (ProdM a b) = [sum $ zipWith (*) (Prelude.take n' (evalEq a (n+1))) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ Prelude.take n' (evalEq b (n+1)))) | n' <- [1..n+1]]
-evalEq dicoGF n (DeriveM a) = tail $ evalEq a (n+1)
-evalEq dicoGF n (RuleM a) = Data.Map.lookup (RuleM a) dicoGF
+evalEq dicoGF n EpsM = take (n+1) $ 1 : repeat 0
+evalEq dicoGF n ZM = take (n+1) $ 0 : 1 : repeat 0
+evalEq dicoGF n (UnionM a b) = take (n+1) $ zipWith (+) (evalEq dicoGF (n+1) a) (evalEq dicoGF (n+1) b)
+-- evalEq dicoGF n (ProdM a b) = [sum $ zipWith (*) (take n' (evalEq a (n+1))) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (evalEq b (n+1)))) | n' <- [1..n+1]]
+-- evalEq dicoGF n (DeriveM a) = tail $ evalEq a (n+1)
+-- evalEq dicoGF n (RuleM a) = M.lookup (RuleM a) dicoGF
 
 
 iterJoyal :: MinSpec -> MinSpecGF -> Int -> MinSpecGF
-iterJoyal spec oldSpecGF n = Data.Map.map (evalEq oldSpecGF n) spec 
+iterJoyal spec oldSpecGF n = M.map (evalEq oldSpecGF n) spec 
 
 gfEGFN :: MinSpec -> MinSpecGF -> Int -> MinSpecGF 
-gfEGFN dico dicoGF n = Prelude.foldr (\n accu -> iterJoyal dico accu n) dicoGF [1..n]
+gfEGFN dico dicoGF n = foldr (\n accu -> iterJoyal dico accu n) dicoGF [1..n]
 
 ----- TOOLS ------
 
