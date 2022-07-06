@@ -93,9 +93,9 @@ instance CombinatClassEGFN (Ast a) where
   gfEGFN Z n = take (n+1) $ 0 : 1 : repeat 0
   gfEGFN (Union a b) n = take (n+1) $ zipWith (+) (gfEGFN a (n+1)) (gfEGFN b (n+1))
   gfEGFN (Prod a b) n = [sum $ zipWith (*) (take n' (gfEGFN a (n+1))) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gfEGFN b (n+1)))) | n' <- [1..n+1]]
-  gfEGFN (Scalar a) n = take (n+1) $ a : repeat 0
-  gfEGFN (Power a 1) n = take (n+1) $ gfEGFN a n
-  gfEGFN (Power a i) n = take (n+1) $ gfEGFN (Prod a (Power a (i-1))) n 
+  -- gfEGFN (Scalar a) n = take (n+1) $ a : repeat 0
+  -- gfEGFN (Power a 1) n = take (n+1) $ gfEGFN a n
+  -- gfEGFN (Power a i) n = take (n+1) $ gfEGFN (Prod a (Power a (i-1))) n 
   gfEGFN (Derive a) n = tail $ gfEGFN a (n+1)
   gfEGFN (Seq a) n = gfEGFN (Rec Z (\b -> Seq a)) n
   gfEGFN (Set a) n = 0 : gfEGFN (Rec Z (\b -> Set a)) n
@@ -109,8 +109,8 @@ instance CombinatClassEGFN (Ast a) where
     gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
     gf' currGf (Prod a b) = [sum $ zipWith (*) (take n' (gf' currGf a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gf' currGf b))) | n' <- [1..]]
     gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (JoyalRec [1]))) -- (Rec Z (\a -> a)) because we don't care 
-    gf' currGf (Cycle a) = 0 : gf' currGf (Prod (Derive a) (Seq a))
-    gf' currGf (Set a) = gf' currGf (Prod (Derive a) (JoyalRec [1]))
+    gf' currGf (Cycle a) = 1 : gf' currGf (Prod (Derive a) (Seq a))
+    gf' currGf (Set a) = gf' currGf (Prod (Derive a) (Rec undefined undefined))
 
 coefBinomial :: Int -> Int -> Int
 coefBinomial k n = div (product [(n-k+1)..n]) (factorial k)
