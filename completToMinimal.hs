@@ -1,6 +1,8 @@
 import qualified Data.Map as M
+import qualified Data.Maybe as Maybe
+import GHC.Integer (divInteger)
 
-type GF = [Int]
+type GF = [Integer]
 
 data EquationAst =
   Eps
@@ -11,7 +13,7 @@ data EquationAst =
   | Derive EquationAst
   | Rule String
   | Seq EquationAst
-  | Power EquationAst Int
+  | Power EquationAst Integer
   | PowerSet EquationAst
   | Set EquationAst
   | Cycle EquationAst
@@ -30,60 +32,55 @@ data MinimalAst =
   deriving (Ord, Eq, Show)
  
 type MinSpec = M.Map EquationAst MinimalAst
-type MinSpecGF = M.Map EquationAst [Int]
+type MinSpecGF = M.Map EquationAst [Integer]
 
+-- data Rule = 
+--         | 
+--         | 
 
--- instance (Show a) => Show (Spec a) where
---   show Z = "Z"
---   show Eps = "Ɛ"
---   show (Union x y) = "(" ++ (show x) ++ " + " ++ (show y) ++ ")"
---   show (Prod x y) = "(" ++ (show x) ++ " * " ++ (show y) ++ ")"
---   show (Seq x) = "Seq(" ++ (show x) ++ ")"
---   show (Derive x) = "Derive(" ++ (show x) ++ ")"  
---   show (Name x) = show x
---   show (Rec x f) = show x ++ " = " ++ show (f x)
+listZeros :: [Integer]
+listZeros = 0 : listZeros
 
--- class CombinatClassEGFN a where
---   gfEGFN :: a -> MinSpecGF -> Int -> GF
+listZerosInteger :: Integer -> [Integer]
+listZerosInteger 0 = [0]
+listZerosInteger n = [0] ++ listZerosInteger (n-1)
 
--- instance CombinatClassEGFN MinSpec where
---   gfEGFN dico dicoGF n = 
---                 |size dico == 1 = (map (gfEGFN' n dicoGF) dico)
---                 |otherwise = --(IDEM ?) or only the axiom
+dico :: MinSpec
+dico = M.fromList([(Rule "A",  ProdM ZM (ProdM ZM (ProdM ZM ZM)))])
 
--- gfEGFN' :: MinSpecGF -> MinimalAst -> GF
--- gfEGFN' dicoGF EpsM = take (n+1) $ 1 : repeat 0
--- gfEGFN' dicoGF ZM = take (n+1) $ 0 : 1 : repeat 0
--- gfEGFN' dicoGF (UnionM a b) = take (n+1) $ zipWith (+) (gfEGFN' a (n+1)) (gfEGFN' b (n+1))
--- gfEGFN' dicoGF (ProdM a b) = [sum $ zipWith (*) (take n' (gfEGFN' a (n+1))) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gfEGFN' b (n+1)))) | n' <- [1..n+1]]
--- gfEGFN' dicoGF (DeriveM a) = tail $ gfEGFN' a (n+1)
--- gfEGFN' dicoGF (RuleM a) = 
+binaryTrees = M.fromList([(Rule "A", UnionM EpsM (ProdM ZM (ProdM (RuleM $ Rule "A") (RuleM $ Rule "A"))))])
+
+dicoGF :: MinSpecGF
+dicoGF = M.fromList([(Rule "A", listZeros)])
 
 evalEq :: MinSpecGF -> Int -> MinimalAst -> GF
 evalEq dicoGF n EpsM = take (n+1) $ 1 : repeat 0
 evalEq dicoGF n ZM = take (n+1) $ 0 : 1 : repeat 0
 evalEq dicoGF n (UnionM a b) = take (n+1) $ zipWith (+) (evalEq dicoGF (n+1) a) (evalEq dicoGF (n+1) b)
--- evalEq dicoGF n (ProdM a b) = [sum $ zipWith (*) (take n' (evalEq a (n+1))) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (evalEq b (n+1)))) | n' <- [1..n+1]]
--- evalEq dicoGF n (DeriveM a) = tail $ evalEq a (n+1)
--- evalEq dicoGF n (RuleM a) = M.lookup (RuleM a) dicoGF
-
+evalEq dicoGF n (ProdM a b) = [sum $ zipWith (*) (take n' (evalEq dicoGF (n+1) a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (evalEq dicoGF (n+1) b))) | n' <- [1..n+1]]
+evalEq dicoGF n (DeriveM a) = tail $ evalEq dicoGF (n+1) a
+evalEq dicoGF n (RuleM a) = Maybe.fromJust (M.lookup a dicoGF)
 
 iterJoyal :: MinSpec -> MinSpecGF -> Int -> MinSpecGF
 iterJoyal spec oldSpecGF n = M.map (evalEq oldSpecGF n) spec 
 
 gfEGFN :: MinSpec -> MinSpecGF -> Int -> MinSpecGF 
-gfEGFN dico dicoGF n = foldr (\n accu -> iterJoyal dico accu n) dicoGF [1..n]
+gfEGFN dico dicoGF n = foldr (\x accu -> iterJoyal dico accu n) dicoGF [1..(n+1)]
 
 ----- TOOLS ------
 
-coefBinomial :: Int -> Int -> Int
-coefBinomial k n = div (product [(n-k+1)..n]) (factorial k)
+prod :: [Int] -> Integer
+prod [] = 1
+prod (x:xs) = (toInteger x) * prod xs
 
-coefBinomialArray :: Int -> [Int]
+coefBinomial :: Int -> Int -> Integer
+coefBinomial k n = divInteger (prod [(n-k+1)..n]) (factorial k)
+
+coefBinomialArray :: Int -> [Integer]
 coefBinomialArray n = [coefBinomial k n | k<-[0..n]]
 
-factorial :: Int -> Int
+factorial :: Int -> Integer
 factorial 0 = 1
-factorial x = (factorial (x-1)) * x
+factorial x = (factorial (x-1)) * (toInteger x)
 
 

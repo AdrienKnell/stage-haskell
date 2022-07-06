@@ -61,7 +61,7 @@ binaryWordsStartingWithABA :: Ast String
 binaryWordsStartingWithABA = (Power Z 3) .*. (Seq (Z .+. Z))
 
 multiplyZtimesZ :: Ast String
-multiplyZtimesZ = Z .*. Z .*. Z .*. Z .*. Z .*. Z
+multiplyZtimesZ = Z .*. Z .*. Z .*. Z
 
 class CombinatClassN a where
   gfN :: a -> Int -> GF
@@ -149,11 +149,14 @@ main =
     print "LABELED binary Words : "
     print $ gfEGFN binaryWords 12
     putStr("\n")
-    print "LABELED binary Words starting by ABA : "
-    print $ gfEGFN binaryWordsStartingWithABA 12
-    putStr("\n")
-    print "LABELED Set (Cycle z) : (the first coefficient is probably wrong ?) "
-    print $ gfEGFN (Set (Cycle Z)) 12
+    -- print "LABELED binary Words starting by ABA : "
+    -- print $ gfEGFN binaryWordsStartingWithABA 12
+    -- putStr("\n")
+    -- print "LABELED Set (Cycle z) : (the first coefficient is probably wrong ?) "
+    -- print $ gfEGFN (Set (Cycle Z)) 12
+    print "z times "
+    print $ gfEGFN multiplyZtimesZ 12
+
 
 
 -- class CombinatClass a where
