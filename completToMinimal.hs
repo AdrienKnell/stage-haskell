@@ -2,6 +2,18 @@ import qualified Data.Map as M
 import qualified Data.Maybe as Maybe
 import GHC.Integer (divInteger)
 
+----------------
+
+-- TO DO
+--      - Show
+--      - .+. au lieu de Union
+--      - Restructurer le code, faire moins de foldr et pattern matching
+--      - Faire des tests 
+--      - Nettoyer le code
+--      - Corrifer le bug de dicoComplet3
+
+----------------
+
 type GF = [Integer]
 
 data EquationAst =
