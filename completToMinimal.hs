@@ -115,6 +115,7 @@ addEquation minSpec (RuleM (Seq a))
                  True -> M.fromList [((Seq a), UnionM EpsM (ProdM (completToMinAUX a) (RuleM (Seq a))))]
                  False -> M.union specFromA $ M.fromList [((Seq a), UnionM EpsM (ProdM (RuleM a) (RuleM (Seq a))))]
   where specFromA = addEquation minSpec (RuleM a)
+addEquation minSpec (RuleM a) = M.empty
 
 
 ------ Calcul of GF ------
@@ -163,13 +164,19 @@ dicoComplet2 :: Specification
 dicoComplet2 = M.fromList([(Rule "A", Eps .+. (Z .*. (Rule "B"))), (Rule "B", Eps .+. Z)])
 
 dicoComplet3 :: Specification
-dicoComplet3 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Rule "A")))))]
+dicoComplet3 = M.fromList([(Rule "A", Seq (Rule "A"))])
 
 dicoComplet4 :: Specification
-dicoComplet4 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Seq (Rule "A"))))))]
+dicoComplet4 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Rule "A")))))]
 
 dicoComplet5 :: Specification
-dicoComplet5 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq ((Rule "A") .+. ((Rule "A") .*. (Rule "A")))))))]
+dicoComplet5 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Seq (Rule "A"))))))]
+
+dicoComplet6 :: Specification
+dicoComplet6 =  M.fromList [(Rule "A", Seq ((Rule "A") .+. (Rule "A")))]
+
+dicoComplet7 :: Specification
+dicoComplet7 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq ((Rule "A") .+. ((Rule "A") .*. (Rule "A")))))))]
 
 
 -- TESTS on MinSpec --
@@ -182,5 +189,5 @@ dicoGF :: MinSpecGF
 dicoGF = createOriginalDicoGF dicoMin
 
 gfFinalTest :: Specification -> MinSpecGF
-gfFinalTest dicoComplet = gfEGFN (completToMinSecondStep (completToMin dicoComplet)) (createOriginalDicoGF (completToMinSecondStep $ completToMin dicoComplet)) 25
+gfFinalTest dicoComplet = gfEGFN (completToMinSecondStep (completToMin dicoComplet)) (createOriginalDicoGF (completToMinSecondStep $ completToMin dicoComplet)) 10
 
