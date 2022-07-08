@@ -5,12 +5,12 @@ import GHC.Integer (divInteger)
 ----------------
 
 -- TO DO
---      - Show
---      - .+. au lieu de Union
+--      - Show OK
+--      - .+. au lieu de Union OK
 --      - Restructurer le code, faire moins de foldr et pattern matching
---      - Faire des tests 
+--      - Faire des tests OK
 --      - Nettoyer le code
---      - Corrifer le bug de dicoComplet3
+--      - Corriger le bug de dicoComplet3
 
 ----------------
 
@@ -27,7 +27,38 @@ data EquationAst =
   | Seq EquationAst
   | Set EquationAst
   | Cycle EquationAst
-  deriving (Ord, Eq, Show)
+  deriving (Ord, Eq)
+
+data MinimalAst = 
+  EpsM
+  | ZM
+  | UnionM MinimalAst MinimalAst
+  | ProdM MinimalAst MinimalAst
+  | PrimitiveM MinimalAst
+  | DeriveM MinimalAst
+  | RuleM EquationAst
+  deriving (Ord, Eq)
+
+instance Show EquationAst where
+  show Z = "Z"
+  show Eps = "Ɛ"
+  show (Union x y) = "(" ++ (show x) ++ " + " ++ (show y) ++ ")"
+  show (Prod x y) = "(" ++ (show x) ++ " * " ++ (show y) ++ ")"
+  show (Seq x) = "Seq(" ++ (show x) ++ ")"
+  show (Set x) = "Set(" ++ (show x) ++ ")"
+  show (Cycle x) = "Cycle(" ++ (show x) ++ ")"
+  show (Derive x) = "Derive(" ++ (show x) ++ ")"  
+  show (Primitive x) = "Primitive(" ++ (show x) ++ ")" 
+  show (Rule s) = "Rule " ++ s
+
+instance Show MinimalAst where
+  show ZM = "Z"
+  show EpsM = "Ɛ"
+  show (UnionM x y) = "(" ++ (show x) ++ " + " ++ (show y) ++ ")"
+  show (ProdM x y) = "(" ++ (show x) ++ " * " ++ (show y) ++ ")"
+  show (DeriveM x) = "DeriveM(" ++ (show x) ++ ")"  
+  show (PrimitiveM x) = "PrimitiveM(" ++ (show x) ++ ")"
+  show (RuleM s) = "RuleM " ++ (show s) 
 
 toStringAST :: EquationAst -> String
 toStringAST Eps = "Eps"
@@ -41,44 +72,15 @@ toStringAST (Seq a) = "Seq (" ++ (toStringAST a) ++ ")"
 toStringAST (Set a) = "Set (" ++ (toStringAST a) ++ ")"
 toStringAST (Cycle a) = "Cycle (" ++ (toStringAST a) ++ ")"
 
-type Specification = M.Map EquationAst EquationAst -- M.Map (Rule "") EquationAst
+(.+.) :: EquationAst -> EquationAst -> EquationAst
+(.+.) = Union
 
-data MinimalAst = 
-  EpsM
-  | ZM
-  | UnionM MinimalAst MinimalAst
-  | ProdM MinimalAst MinimalAst
-  | PrimitiveM MinimalAst
-  | DeriveM MinimalAst
-  | RuleM EquationAst
-  deriving (Ord, Eq, Show)
- 
+(.*.) :: EquationAst -> EquationAst -> EquationAst
+(.*.) = Prod
+
+type Specification = M.Map EquationAst EquationAst -- M.Map (Rule "") EquationAst
 type MinSpec = M.Map EquationAst MinimalAst
 type MinSpecGF = M.Map EquationAst [Integer]
-
------- Examples ------
-
-dicoComplet :: Specification
-dicoComplet = M.fromList [(Rule "A", Union Eps (Prod Z (Prod (Rule "A") (Seq (Rule "A")))))]
-
-dicoComplet2 :: Specification
-dicoComplet2 = M.fromList [(Rule "A", Union Eps (Prod Z (Prod (Rule "A") (Seq (Seq (Rule "A"))))))]
-
-dicoComplet3 :: Specification
-dicoComplet3 = M.fromList [(Rule "A", Union Eps (Prod Z (Prod (Rule "A") (Seq (Union (Rule "A") (Prod (Rule "A") (Rule "A")))))))]
-
-
-dicoMin :: MinSpec
-dicoMin = M.fromList([(Rule "A",  ProdM ZM (ProdM ZM (ProdM ZM ZM)))])
-
-binaryTrees = M.fromList([(Rule "A", UnionM EpsM (ProdM ZM (ProdM (RuleM $ Rule "A") (RuleM $ Rule "A"))))])
-
-
-dicoGF :: MinSpecGF
-dicoGF = createOriginalDicoGF dicoMin
-
-gfFinalTest :: MinSpecGF
-gfFinalTest = gfEGFN (completToMin dicoComplet) (createOriginalDicoGF $ completToMin dicoComplet) 25
 
 ------ Convert complet to Minimal -------
 
@@ -96,8 +98,8 @@ completToMinAUX (Prod a b) = (ProdM (completToMinAUX a) (completToMinAUX b))
 completToMinAUX (Rule a) = (RuleM $ Rule a)
 completToMinAUX (Seq a) = (RuleM $ Seq a)
 
-completToMinSecondeStep :: MinSpec -> MinSpec
-completToMinSecondeStep minSpec = foldr (\x accu -> M.union accu (addEquation accu x)) minSpec minSpec
+completToMinSecondStep :: MinSpec -> MinSpec
+completToMinSecondStep minSpec = foldr (\x accu -> M.union accu (addEquation accu x)) minSpec minSpec
 
 addEquation :: MinSpec -> MinimalAst -> MinSpec
 addEquation minSpec EpsM = M.empty
@@ -120,10 +122,6 @@ addEquation minSpec (RuleM (Seq a))
 listZeros :: [Integer]
 listZeros = 0 : listZeros
 
--- listZerosInteger :: Integer -> [Integer]
--- listZerosInteger 0 = [0]
--- listZerosInteger n = [0] ++ listZerosInteger (n-1)
-
 evalEq :: MinSpecGF -> Int -> MinimalAst -> GF
 evalEq dicoGF n EpsM = take (n+1) $ 1 : repeat 0
 evalEq dicoGF n ZM = take (n+1) $ 0 : 1 : repeat 0
@@ -137,8 +135,6 @@ iterJoyal spec oldSpecGF n = M.map (evalEq oldSpecGF n) spec
 
 gfEGFN :: MinSpec -> MinSpecGF -> Int -> MinSpecGF 
 gfEGFN dico dicoGF n = foldr (\x accu -> iterJoyal dico accu n) dicoGF [1..(n+1)]
-
------ TOOLS ------
 
 prod :: [Int] -> Integer
 prod [] = 1
@@ -154,4 +150,37 @@ factorial :: Int -> Integer
 factorial 0 = 1
 factorial x = (factorial (x-1)) * (toInteger x)
 
+------ TESTS ------
+
+-- TESTS on Specification --
+dicoComplet0 :: Specification
+dicoComplet0 = M.fromList [(Rule "A", Eps .+. Z)]
+
+dicoComplet1 :: Specification -- binary trees
+dicoComplet1 = M.fromList([(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Rule "A"))))])
+
+dicoComplet2 :: Specification
+dicoComplet2 = M.fromList([(Rule "A", Eps .+. (Z .*. (Rule "B"))), (Rule "B", Eps .+. Z)])
+
+dicoComplet3 :: Specification
+dicoComplet3 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Rule "A")))))]
+
+dicoComplet4 :: Specification
+dicoComplet4 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Seq (Rule "A"))))))]
+
+dicoComplet5 :: Specification
+dicoComplet5 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq ((Rule "A") .+. ((Rule "A") .*. (Rule "A")))))))]
+
+
+-- TESTS on MinSpec --
+dicoMin :: MinSpec
+dicoMin = M.fromList([(Rule "A",  ProdM ZM (ProdM ZM (ProdM ZM ZM)))])
+
+binaryTrees = M.fromList([(Rule "A", UnionM EpsM (ProdM ZM (ProdM (RuleM $ Rule "A") (RuleM $ Rule "A"))))])
+
+dicoGF :: MinSpecGF
+dicoGF = createOriginalDicoGF dicoMin
+
+gfFinalTest :: Specification -> MinSpecGF
+gfFinalTest dicoComplet = gfEGFN (completToMinSecondStep (completToMin dicoComplet)) (createOriginalDicoGF (completToMinSecondStep $ completToMin dicoComplet)) 25
 
