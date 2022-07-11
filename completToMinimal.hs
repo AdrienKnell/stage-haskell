@@ -9,7 +9,7 @@ import GHC.Integer (divInteger)
 --      - .+. au lieu de Union OK
 --      - Restructurer le code, faire moins de foldr et pattern matching
 --      - Faire des tests OK
---      - Nettoyer le code
+--      - Nettoyer le code OK
 --      - Corriger le bug de dicoComplet3
 
 ----------------
