@@ -97,6 +97,8 @@ completToMinAUX (Union a b) = (UnionM (completToMinAUX a) (completToMinAUX b))
 completToMinAUX (Prod a b) = (ProdM (completToMinAUX a) (completToMinAUX b))
 completToMinAUX (Rule a) = (RuleM $ Rule a)
 completToMinAUX (Seq a) = (RuleM $ Seq a)
+completToMinAUX (Set a) = (RuleM $ Set a)
+completToMinAUX (Cycle a) = (RuleM $ Cycle a)
 
 completToMinSecondStep :: MinSpec -> MinSpec
 completToMinSecondStep minSpec = foldr (\x accu -> M.union accu (addEquation accu x)) minSpec minSpec
@@ -114,6 +116,16 @@ addEquation minSpec (RuleM (Seq a))
   |otherwise = case M.null specFromA of
                  True -> M.fromList [((Seq a), UnionM EpsM (ProdM (completToMinAUX a) (RuleM (Seq a))))]
                  False -> M.union specFromA $ M.fromList [((Seq a), UnionM EpsM (ProdM (RuleM a) (RuleM (Seq a))))]
+-- addEquation minSpec (RuleM (Set a))
+--   |M.member (Seq a) minSpec = M.empty
+--   |otherwise = case M.null specFromA of
+--                  True -> M.fromList [((Set a), UnionM EpsM (ProdM (completToMinAUX a) (RuleM (Seq a))))]
+--                  False -> M.union specFromA $ M.fromList [((Set a), UnionM EpsM (ProdM (RuleM a) (RuleM (Seq a))))]
+-- addEquation minSpec (RuleM (Cycle a))
+--   |M.member (Seq a) minSpec = M.empty
+--   |otherwise = case M.null specFromA of
+--                  True -> M.fromList [((Cycle a), UnionM EpsM (ProdM (completToMinAUX a) (RuleM (Seq a))))]
+--                  False -> M.union specFromA $ M.fromList [((Cycle a), UnionM EpsM (ProdM (RuleM a) (RuleM (Seq a))))]
   where specFromA = addEquation minSpec (RuleM a)
 addEquation minSpec (RuleM a) = M.empty
 
