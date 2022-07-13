@@ -87,6 +87,21 @@ type MinSpecGF = M.Map EquationAst [Integer]
 createOriginalDicoGF :: MinSpec -> MinSpecGF
 createOriginalDicoGF spec = M.map (\x -> listZeros) spec
 
+removeAllCycle :: Specification -> Specification
+removeAllCycle spec = M.map (removeCycle) spec
+
+removeCycle :: EquationAst -> EquationAst
+removeCycle Eps = Eps
+removeCycle Z = Z
+removeCycle (Union a b) = Union (removeCycle a) (removeCycle b)
+removeCycle (Prod a b) = Prod (removeCycle a) (removeCycle b)
+removeCycle (Rule a) = Rule a
+removeCycle (Primitive a) = Primitive (removeCycle a)
+removeCycle (Derive a) = Derive (removeCycle a)
+removeCycle (Seq a) = Seq (removeCycle a)
+removeCycle (Set a) = Set (removeCycle a)
+removeCycle (Cycle a) = Primitive (Prod (Derive a) (Seq a))
+
 completToMin :: Specification -> MinSpec
 completToMin spec = M.map (completToMinAUX) spec
 
@@ -96,9 +111,10 @@ completToMinAUX Z = ZM
 completToMinAUX (Union a b) = (UnionM (completToMinAUX a) (completToMinAUX b))
 completToMinAUX (Prod a b) = (ProdM (completToMinAUX a) (completToMinAUX b))
 completToMinAUX (Rule a) = (RuleM $ Rule a)
+completToMinAUX (Derive a) = DeriveM (completToMinAUX a)
+completToMinAUX (Primitive a) = PrimitiveM (completToMinAUX a)
 completToMinAUX (Seq a) = (RuleM $ Seq a)
 completToMinAUX (Set a) = (RuleM $ Set a)
-completToMinAUX (Cycle a) = (RuleM $ Cycle a)
 
 completToMinSecondStep :: MinSpec -> MinSpec
 completToMinSecondStep minSpec = foldr (\x accu -> M.union accu (addEquation accu x)) minSpec minSpec
@@ -116,17 +132,18 @@ addEquation minSpec (RuleM (Seq a))
   |otherwise = case M.null specFromA of
                  True -> M.fromList [((Seq a), UnionM EpsM (ProdM (completToMinAUX a) (RuleM (Seq a))))]
                  False -> M.union specFromA $ M.fromList [((Seq a), UnionM EpsM (ProdM (RuleM a) (RuleM (Seq a))))]
--- addEquation minSpec (RuleM (Set a))
---   |M.member (Seq a) minSpec = M.empty
---   |otherwise = case M.null specFromA of
---                  True -> M.fromList [((Set a), UnionM EpsM (ProdM (completToMinAUX a) (RuleM (Seq a))))]
---                  False -> M.union specFromA $ M.fromList [((Set a), UnionM EpsM (ProdM (RuleM a) (RuleM (Seq a))))]
+                 where specFromA = addEquation minSpec (RuleM a)
+addEquation minSpec (RuleM (Set a))
+  |M.member (Seq a) minSpec = M.empty
+  |otherwise = case M.null specFromA of
+                 True -> M.fromList [((Set a), PrimitiveM (ProdM (DeriveM (completToMinAUX a)) (RuleM (Set a))))]
+                 False -> M.union specFromA $ M.fromList [((Set a), PrimitiveM (ProdM (DeriveM (RuleM a)) (RuleM (Set a))))]
+                 where specFromA = addEquation minSpec (RuleM a)
 -- addEquation minSpec (RuleM (Cycle a))
 --   |M.member (Seq a) minSpec = M.empty
 --   |otherwise = case M.null specFromA of
 --                  True -> M.fromList [((Cycle a), UnionM EpsM (ProdM (completToMinAUX a) (RuleM (Seq a))))]
---                  False -> M.union specFromA $ M.fromList [((Cycle a), UnionM EpsM (ProdM (RuleM a) (RuleM (Seq a))))]
-  where specFromA = addEquation minSpec (RuleM a)
+--                  False -> M.union specFromA $ M.fromList [((Cycle a), Primitive (ProdM (DeriveM (RuleM a)) (RuleM (Seq a))))]
 addEquation minSpec (RuleM a) = M.empty
 
 
@@ -141,6 +158,7 @@ evalEq dicoGF n ZM = take (n+1) $ 0 : 1 : repeat 0
 evalEq dicoGF n (UnionM a b) = take (n+1) $ zipWith (+) (evalEq dicoGF (n+1) a) (evalEq dicoGF (n+1) b)
 evalEq dicoGF n (ProdM a b) = [sum $ zipWith (*) (take n' (evalEq dicoGF (n+1) a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (evalEq dicoGF (n+1) b))) | n' <- [1..n+1]]
 evalEq dicoGF n (DeriveM a) = tail $ evalEq dicoGF (n+1) a
+evalEq dicoGF n (PrimitiveM a) = 1 : (evalEq dicoGF (n+1) a)
 evalEq dicoGF n (RuleM a) = Maybe.fromJust (M.lookup a dicoGF)
 
 iterJoyal :: MinSpec -> MinSpecGF -> Int -> MinSpecGF
@@ -175,20 +193,42 @@ dicoComplet1 = M.fromList([(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Rule "A"))
 dicoComplet2 :: Specification
 dicoComplet2 = M.fromList([(Rule "A", Eps .+. (Z .*. (Rule "B"))), (Rule "B", Eps .+. Z)])
 
-dicoComplet3 :: Specification
-dicoComplet3 = M.fromList([(Rule "A", Seq (Rule "A"))])
+dicoComplet3 :: Specification -- Binary words
+dicoComplet3 = M.fromList([(Rule "A", Seq (Z .+. Z))])
 
 dicoComplet4 :: Specification
-dicoComplet4 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Rule "A")))))]
+dicoComplet4 = M.fromList([(Rule "A", Seq (Z .+. (Seq (Rule "A"))))])
 
 dicoComplet5 :: Specification
-dicoComplet5 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Seq (Rule "A"))))))]
+dicoComplet5 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Rule "A")))))]
 
 dicoComplet6 :: Specification
-dicoComplet6 =  M.fromList [(Rule "A", Seq ((Rule "A") .+. (Rule "A")))]
+dicoComplet6 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Seq (Rule "A"))))))]
 
 dicoComplet7 :: Specification
-dicoComplet7 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq ((Rule "A") .+. ((Rule "A") .*. (Rule "A")))))))]
+dicoComplet7 =  M.fromList [(Rule "A", Seq ((Rule "A") .+. (Rule "A")))]
+
+dicoComplet8 :: Specification
+dicoComplet8 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq ((Rule "A") .+. ((Rule "A") .*. (Rule "A")))))))]
+
+dicoComplet9 :: Specification
+dicoComplet9 = M.fromList [(Rule "A", Set (Cycle Z))]
+
+main :: IO ()
+main = 
+  do
+    putStr("---------------------------------------------------\n")
+    putStr("|                       START                     |\n")
+    putStr("---------------------------------------------------\n")
+    print "LABELED binary Trees: " 
+    print $ gfFinalTest dicoComplet1
+    putStr("\n")
+    print "LABELED binary Words : "
+    print $ gfFinalTest dicoComplet3
+    putStr("\n")
+    print "Set (Cycle Z) : "
+    print $ gfFinalTest dicoComplet9
+    putStr("\n")
 
 
 -- TESTS on MinSpec --
@@ -201,5 +241,5 @@ dicoGF :: MinSpecGF
 dicoGF = createOriginalDicoGF dicoMin
 
 gfFinalTest :: Specification -> MinSpecGF
-gfFinalTest dicoComplet = gfEGFN (completToMinSecondStep (completToMin dicoComplet)) (createOriginalDicoGF (completToMinSecondStep $ completToMin dicoComplet)) 10
+gfFinalTest dicoComplet = gfEGFN (completToMinSecondStep (completToMin dicoComplet)) (createOriginalDicoGF (completToMinSecondStep $ completToMin (removeAllCycle dicoComplet))) 10
 
