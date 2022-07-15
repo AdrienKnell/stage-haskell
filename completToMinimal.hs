@@ -56,7 +56,7 @@ instance Show MinimalAst where
   show EpsM = "Ɛ"
   show (UnionM x y) = "(" ++ (show x) ++ " + " ++ (show y) ++ ")"
   show (ProdM x y) = "(" ++ (show x) ++ " * " ++ (show y) ++ ")"
-  show (DeriveM x) = "DeriveM(" ++ (show x) ++ ")"  
+  show (DeriveM x) = "DeriveM(" ++ (show x) ++ ")"
   show (PrimitiveM x) = "PrimitiveM(" ++ (show x) ++ ")"
   show (RuleM s) = "RuleM " ++ (show s) 
 
@@ -79,8 +79,13 @@ toStringAST (Cycle a) = "Cycle (" ++ (toStringAST a) ++ ")"
 (.*.) = Prod
 
 type Specification = M.Map EquationAst EquationAst -- M.Map (Rule "") EquationAst
-type MinSpec = M.Map EquationAst MinimalAst
-type MinSpecGF = M.Map EquationAst [Integer]
+type MinSpec = M.Map MinimalAst MinimalAst
+type MinSpecGF = M.Map MinimalAst [Integer]
+
+instance Show MinSpec where
+  show = M.mapWithKey (\k v-> show k ++ " = " + show v)
+  
+
 
 ------ Convert complet to Minimal -------
 
@@ -102,49 +107,43 @@ removeCycle (Seq a) = Seq (removeCycle a)
 removeCycle (Set a) = Set (removeCycle a)
 removeCycle (Cycle a) = Primitive (Prod (Derive a) (Seq a))
 
-completToMin :: Specification -> MinSpec
-completToMin spec = M.map (completToMinAUX) spec
+specToMinSpec :: Specification -> MinSpec
+specToMinSpec = M.foldrWithKey addEqToMinSpec M.empty
 
-completToMinAUX :: EquationAst -> MinimalAst
-completToMinAUX Eps = EpsM
-completToMinAUX Z = ZM
-completToMinAUX (Union a b) = (UnionM (completToMinAUX a) (completToMinAUX b))
-completToMinAUX (Prod a b) = (ProdM (completToMinAUX a) (completToMinAUX b))
-completToMinAUX (Rule a) = (RuleM $ Rule a)
-completToMinAUX (Derive a) = DeriveM (completToMinAUX a)
-completToMinAUX (Primitive a) = PrimitiveM (completToMinAUX a)
-completToMinAUX (Seq a) = (RuleM $ Seq a)
-completToMinAUX (Set a) = (RuleM $ Set a)
+addEqToMinSpec :: EquationAst -> EquationAst -> MinSpec -> MinSpec
+addEqToMinSpec (Rule a) eq minSpec = M.insert (RuleM $ Rule a) eqM minSpecM
+  where (eqM, minSpecM) = computeMinEq eq minSpec
+addEqToMinSpec _ _ _ = undefined
 
-completToMinSecondStep :: MinSpec -> MinSpec
-completToMinSecondStep minSpec = foldr (\x accu -> M.union accu (addEquation accu x)) minSpec minSpec
-
-addEquation :: MinSpec -> MinimalAst -> MinSpec
-addEquation minSpec EpsM = M.empty
-addEquation minSpec ZM = M.empty
-addEquation minSpec (UnionM a b) = M.union (addEquation minSpec a) (addEquation minSpec b)
-addEquation minSpec (ProdM a b) = M.union (addEquation minSpec a) (addEquation minSpec b)
-addEquation minSpec (PrimitiveM a) = (addEquation minSpec a)
-addEquation minSpec (DeriveM a) = (addEquation minSpec a)
-addEquation minSpec (RuleM (Rule a)) = M.empty
-addEquation minSpec (RuleM (Seq a))
-  |M.member (Seq a) minSpec = M.empty
-  |otherwise = case M.null specFromA of
-                 True -> M.fromList [((Seq a), UnionM EpsM (ProdM (completToMinAUX a) (RuleM (Seq a))))]
-                 False -> M.union specFromA $ M.fromList [((Seq a), UnionM EpsM (ProdM (RuleM a) (RuleM (Seq a))))]
-                 where specFromA = addEquation minSpec (RuleM a)
-addEquation minSpec (RuleM (Set a))
-  |M.member (Seq a) minSpec = M.empty
-  |otherwise = case M.null specFromA of
-                 True -> M.fromList [((Set a), PrimitiveM (ProdM (DeriveM (completToMinAUX a)) (RuleM (Set a))))]
-                 False -> M.union specFromA $ M.fromList [((Set a), PrimitiveM (ProdM (DeriveM (RuleM a)) (RuleM (Set a))))]
-                 where specFromA = addEquation minSpec (RuleM a)
--- addEquation minSpec (RuleM (Cycle a))
---   |M.member (Seq a) minSpec = M.empty
---   |otherwise = case M.null specFromA of
---                  True -> M.fromList [((Cycle a), UnionM EpsM (ProdM (completToMinAUX a) (RuleM (Seq a))))]
---                  False -> M.union specFromA $ M.fromList [((Cycle a), Primitive (ProdM (DeriveM (RuleM a)) (RuleM (Seq a))))]
-addEquation minSpec (RuleM a) = M.empty
+computeMinEq :: EquationAst -> MinSpec -> (MinimalAst, MinSpec)
+computeMinEq Z minSpec = (ZM, minSpec)
+computeMinEq Eps minSpec = (EpsM, minSpec)
+computeMinEq (Derive a) minSpec = (DeriveM aM, minSpecA)
+  where (aM, minSpecA) = computeMinEq a minSpec
+computeMinEq (Primitive a) minSpec = (PrimitiveM aM, minSpecA)
+  where (aM, minSpecA) = computeMinEq a minSpec
+computeMinEq (Rule a) minSpec = (RuleM $ Rule a, minSpec)
+computeMinEq (Union a b) minSpec = (UnionM aM bM, minSpecM)
+  where (aM, minSpecA) = computeMinEq a minSpec
+        (bM, minSPecB) = computeMinEq b minSpec
+        minSpecM = M.union minSpecA minSPecB
+computeMinEq (Prod a b) minSpec = (ProdM aM bM, minSpecM)
+  where (aM, minSpecA) = computeMinEq a minSpec
+        (bM, minSPecB) = computeMinEq b minSpec
+        minSpecM = M.union minSpecA minSPecB
+computeMinEq (Seq eq) minSpec = (RuleM (Seq eq), minSpecM) -- SEQ
+  where (eq', minSpec') = computeMinEq eq minSpec
+        minSpecM = M.insert (RuleM (Seq eq)) eqM minSpec'
+        eqM = UnionM EpsM (ProdM eq' (RuleM (Seq eq)))
+computeMinEq (Set eq) minSpec = (RuleM (Set eq), minSpecM) -- SET
+  where (eq', minSpec') = computeMinEq eq minSpec
+        minSpecM = M.insert (RuleM (Set eq)) eqM minSpec'
+        eqM = ProdM (PrimitiveM eq') (RuleM (Set eq))  
+computeMinEq (Cycle eq) minSpec = (RuleM (Cycle eq), minSpecM) -- CYCLE
+  where (eq', minSpec') = computeMinEq eq minSpec
+        minSpecM = M.insert (RuleM (Cycle eq)) eqM minSpec'
+        eqM = PrimitiveM (ProdM (DeriveM eq') (RuleM (Seq eq)))
+        eqMseq = UnionM EpsM (ProdM eq' (RuleM (Seq eq)))
 
 
 ------ Calcul of GF ------
@@ -159,7 +158,7 @@ evalEq dicoGF n (UnionM a b) = take (n+1) $ zipWith (+) (evalEq dicoGF (n+1) a) 
 evalEq dicoGF n (ProdM a b) = [sum $ zipWith (*) (take n' (evalEq dicoGF (n+1) a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (evalEq dicoGF (n+1) b))) | n' <- [1..n+1]]
 evalEq dicoGF n (DeriveM a) = tail $ evalEq dicoGF (n+1) a
 evalEq dicoGF n (PrimitiveM a) = 1 : (evalEq dicoGF (n+1) a)
-evalEq dicoGF n (RuleM a) = Maybe.fromJust (M.lookup a dicoGF)
+evalEq dicoGF n (RuleM a) = Maybe.fromJust (M.lookup (RuleM a) dicoGF)
 
 iterJoyal :: MinSpec -> MinSpecGF -> Int -> MinSpecGF
 iterJoyal spec oldSpecGF n = M.map (evalEq oldSpecGF n) spec 
@@ -233,13 +232,13 @@ main =
 
 -- TESTS on MinSpec --
 dicoMin :: MinSpec
-dicoMin = M.fromList([(Rule "A",  ProdM ZM (ProdM ZM (ProdM ZM ZM)))])
+dicoMin = M.fromList([(RuleM $ Rule "A",  ProdM ZM (ProdM ZM (ProdM ZM ZM)))])
 
-binaryTrees = M.fromList([(Rule "A", UnionM EpsM (ProdM ZM (ProdM (RuleM $ Rule "A") (RuleM $ Rule "A"))))])
+binaryTrees = M.fromList([(RuleM $ Rule "A", UnionM EpsM (ProdM ZM (ProdM (RuleM $ Rule "A") (RuleM $ Rule "A"))))])
 
 dicoGF :: MinSpecGF
 dicoGF = createOriginalDicoGF dicoMin
 
 gfFinalTest :: Specification -> MinSpecGF
-gfFinalTest dicoComplet = gfEGFN (completToMinSecondStep (completToMin dicoComplet)) (createOriginalDicoGF (completToMinSecondStep $ completToMin (removeAllCycle dicoComplet))) 10
+gfFinalTest dicoComplet = gfEGFN (specToMinSpec $ removeAllCycle dicoComplet) (createOriginalDicoGF (specToMinSpec (removeAllCycle dicoComplet))) 10
 
