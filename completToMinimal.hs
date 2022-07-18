@@ -1,3 +1,7 @@
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE OverlappingInstances #-}
+-- -XTypeSynonymInstances -XFlexibleInstances -XOverlappingInstances
 import qualified Data.Map as M
 import qualified Data.Maybe as Maybe
 import GHC.Integer (divInteger)
@@ -82,8 +86,11 @@ type Specification = M.Map EquationAst EquationAst -- M.Map (Rule "") EquationAs
 type MinSpec = M.Map MinimalAst MinimalAst
 type MinSpecGF = M.Map MinimalAst [Integer]
 
--- instance Show MinSpec where
---   show = M.mapWithKey (\k v-> show k ++ " = " + show v)
+
+
+minSpecToStr = concat . M.mapWithKey (\k v-> show k ++ " = " ++ show v)
+instance Show MinSpec where
+  show = minSpecToStr
 
 
 ------ Convert complet to Minimal -------
@@ -137,7 +144,7 @@ computeMinEq (Seq eq) minSpec = (RuleM (Seq eq), minSpecM) -- SEQ
 computeMinEq (Set eq) minSpec = (RuleM (Set eq), minSpecM) -- SET
   where (eq', minSpec') = computeMinEq eq minSpec
         minSpecM = M.insert (RuleM (Set eq)) eqM minSpec'
-        eqM = ProdM (PrimitiveM eq') (RuleM (Set eq))  
+        eqM = PrimitiveM $ ProdM (DeriveM eq') (RuleM (Set eq))
 computeMinEq (Cycle eq) minSpec = (RuleM (Cycle eq), minSpecM) -- CYCLE
   where (eq', minSpec') = computeMinEq eq minSpec
         minSpecM = M.insert (RuleM (Seq eq)) eqMseq $ M.insert (RuleM (Cycle eq)) eqM minSpec'
@@ -211,6 +218,10 @@ dicoComplet8 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq ((Rule
 
 dicoComplet9 :: Specification
 dicoComplet9 = M.fromList [(Rule "A", Set (Cycle Z))]
+
+dicoComplet10 :: Specification
+dicoComplet10 = M.fromList [(Rule "A", Prod Z (Set (Rule "A")))]
+
 
 main :: IO ()
 main = 
