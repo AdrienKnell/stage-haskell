@@ -82,9 +82,8 @@ type Specification = M.Map EquationAst EquationAst -- M.Map (Rule "") EquationAs
 type MinSpec = M.Map MinimalAst MinimalAst
 type MinSpecGF = M.Map MinimalAst [Integer]
 
-instance Show MinSpec where
-  show = M.mapWithKey (\k v-> show k ++ " = " + show v)
-  
+-- instance Show MinSpec where
+--   show = M.mapWithKey (\k v-> show k ++ " = " + show v)
 
 
 ------ Convert complet to Minimal -------
@@ -141,7 +140,7 @@ computeMinEq (Set eq) minSpec = (RuleM (Set eq), minSpecM) -- SET
         eqM = ProdM (PrimitiveM eq') (RuleM (Set eq))  
 computeMinEq (Cycle eq) minSpec = (RuleM (Cycle eq), minSpecM) -- CYCLE
   where (eq', minSpec') = computeMinEq eq minSpec
-        minSpecM = M.insert (RuleM (Cycle eq)) eqM minSpec'
+        minSpecM = M.insert (RuleM (Seq eq)) eqMseq $ M.insert (RuleM (Cycle eq)) eqM minSpec'
         eqM = PrimitiveM (ProdM (DeriveM eq') (RuleM (Seq eq)))
         eqMseq = UnionM EpsM (ProdM eq' (RuleM (Seq eq)))
 
@@ -240,5 +239,5 @@ dicoGF :: MinSpecGF
 dicoGF = createOriginalDicoGF dicoMin
 
 gfFinalTest :: Specification -> MinSpecGF
-gfFinalTest dicoComplet = gfEGFN (specToMinSpec $ removeAllCycle dicoComplet) (createOriginalDicoGF (specToMinSpec (removeAllCycle dicoComplet))) 10
+gfFinalTest dicoComplet = gfEGFN (specToMinSpec $ dicoComplet) (createOriginalDicoGF (specToMinSpec dicoComplet)) 10
 
