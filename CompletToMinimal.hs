@@ -1,7 +1,7 @@
 module CompletToMinimal
 (
-  EquationAst,
-  MinimalAst,
+  EquationAst (..),
+  MinimalAst (..),
   toStringAST,
   (.+.),
   (.*.),

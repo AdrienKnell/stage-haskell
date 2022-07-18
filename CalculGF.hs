@@ -16,13 +16,13 @@ import GHC.Integer (divInteger)
 import CompletToMinimal
 
 evalEq :: MinSpecGF -> Int -> MinimalAst -> GF
-evalEq dicoGF n EpsM = take (n+1) $ 1 : repeat 0
-evalEq dicoGF n ZM = take (n+1) $ 0 : 1 : repeat 0
-evalEq dicoGF n (UnionM a b) = take (n+1) $ zipWith (+) (evalEq dicoGF (n+1) a) (evalEq dicoGF (n+1) b)
-evalEq dicoGF n (ProdM a b) = [sum $ zipWith (*) (take n' (evalEq dicoGF (n+1) a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (evalEq dicoGF (n+1) b))) | n' <- [1..n+1]]
-evalEq dicoGF n (DeriveM a) = tail $ evalEq dicoGF (n+1) a
-evalEq dicoGF n (PrimitiveM a) = 1 : (evalEq dicoGF (n+1) a)
-evalEq dicoGF n (RuleM a) = Maybe.fromJust (M.lookup (RuleM a) dicoGF)
+evalEq dicoGF n EpsM = take (n) $ 1 : repeat 0
+evalEq dicoGF n ZM = take (n) $ 0 : 1 : repeat 0
+evalEq dicoGF n (UnionM a b) = take (n) $ zipWith (+) (evalEq dicoGF (n) a) (evalEq dicoGF (n) b)
+evalEq dicoGF n (ProdM a b) = [sum $ zipWith (*) (take n' (evalEq dicoGF (n) a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (evalEq dicoGF (n) b))) | n' <- [1..n]]
+evalEq dicoGF n (DeriveM a) = take n $ tail $ evalEq dicoGF (n) a
+evalEq dicoGF n (PrimitiveM a) = take n $ 1 : (evalEq dicoGF (n) a)
+evalEq dicoGF n (RuleM a) = take n $ Maybe.fromJust (M.lookup (RuleM a) dicoGF)
 
 iterJoyal :: MinSpec -> MinSpecGF -> Int -> MinSpecGF
 iterJoyal spec oldSpecGF n = M.map (evalEq oldSpecGF n) spec 

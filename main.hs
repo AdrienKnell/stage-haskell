@@ -54,10 +54,18 @@ dicoComplet13 = M.fromList [(Rule "A", Set (Set Z))]
 dicoComplet14 :: Specification -- test for set and set nested : Surjections
 dicoComplet14 = M.fromList [(Rule "A", Cycle (Cycle Z))]
 
-testFunction :: [Int] -> [Int] -> String 
+testFunction :: [Integer] -> [Integer] -> String 
 testFunction l1 l2
             |l1 == l2 = "---------Test PASSED---------"
-            |otherwise = "xxxxxxxxTest FAILEDxxxxxxxx"
+            |otherwise = "Test FAILED you should have : " ++ show l2
+
+listInteger :: [Int] -> [Integer]
+listInteger [] = []
+listInteger (x:xs) = toInteger x : (listInteger xs)
+
+myPrint :: Show a => Maybe a -> IO ()
+myPrint (Just x) = print x
+myPrint n        = print n
 
 main :: IO ()
 main = 
@@ -66,29 +74,36 @@ main =
     putStr("|                       START                     |\n")
     putStr("---------------------------------------------------\n")
     print "Eps + Z : " 
-    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet1
-    print $ testFunction (M.lookup (RuleM "A") $ gfFinalTest dicoComplet1) [1,1,0,0,0,0,0,0,0,0]
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet1
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet1)) (listInteger [1,1,0,0,0,0,0,0,0,0])
     putStr("\n")
     print "Z * Z : " 
-    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet2
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet2
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet2)) (listInteger [0,0,2,0,0,0,0,0,0,0])
     putStr("\n")
     print "LABELED PLANAR BINARY TREES : " 
-    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet3
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet3
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet3)) (listInteger [0,1,0,6,0,240,0,25200,0,5080320])
     putStr("\n")
     print "LABELED BINARY WORDS : "
-    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet5
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet5
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet5)) (listInteger [1,2,8,48,384,3840,46080,645120,10321920,185794560])
     putStr("\n")
     print "Cayley Trees : " 
-    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet10
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet10
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet10)) (listInteger [0,1,2,9,64,625,7776,117649,2097152,43046721])
     putStr("\n")
     print "Set (Cycle Z) : "
-    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet11
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet11
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet11)) (listInteger [1,1,2,6,24,120,720,5040,40320,362880])
     putStr("\n")
     print "Set (Set Z) : "
-    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet13
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet13
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet13)) (listInteger [1,1,2,5,15,52,203,877,4140,21147])
     putStr("\n")
     print "Set (Cycle Z), Permutations : "
-    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet12
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet12
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet12)) (listInteger [1,1,3,13,73,501,4051,37633,394353,4596553])
     putStr("\n")
 
 
