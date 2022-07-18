@@ -1,4 +1,10 @@
-import completToMinimal.hs
+-- -XTypeSynonymInstances -XFlexibleInstances -XOverlappingInstances
+import qualified Data.Map as M
+import qualified Data.Maybe as Maybe
+import GHC.Integer (divInteger)
+
+import CompletToMinimal
+import CalculGF
 
 ------ TESTS ------
 
@@ -48,6 +54,11 @@ dicoComplet13 = M.fromList [(Rule "A", Set (Set Z))]
 dicoComplet14 :: Specification -- test for set and set nested : Surjections
 dicoComplet14 = M.fromList [(Rule "A", Cycle (Cycle Z))]
 
+testFunction :: [Int] -> [Int] -> String 
+testFunction l1 l2
+            |l1 == l2 = "---------Test PASSED---------"
+            |otherwise = "xxxxxxxxTest FAILEDxxxxxxxx"
+
 main :: IO ()
 main = 
   do
@@ -55,28 +66,29 @@ main =
     putStr("|                       START                     |\n")
     putStr("---------------------------------------------------\n")
     print "Eps + Z : " 
-    print $ gfFinalTest dicoComplet1
+    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet1
+    print $ testFunction (M.lookup (RuleM "A") $ gfFinalTest dicoComplet1) [1,1,0,0,0,0,0,0,0,0]
     putStr("\n")
     print "Z * Z : " 
-    print $ gfFinalTest dicoComplet2
+    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet2
     putStr("\n")
     print "LABELED PLANAR BINARY TREES : " 
-    print $ gfFinalTest dicoComplet3
+    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet3
     putStr("\n")
     print "LABELED BINARY WORDS : "
-    print $ gfFinalTest dicoComplet5
+    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet5
     putStr("\n")
     print "Cayley Trees : " 
-    print $ gfFinalTest dicoComplet10
+    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet10
     putStr("\n")
     print "Set (Cycle Z) : "
-    print $ gfFinalTest dicoComplet11
+    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet11
     putStr("\n")
     print "Set (Set Z) : "
-    print $ gfFinalTest dicoComplet13
+    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet13
     putStr("\n")
     print "Set (Cycle Z), Permutations : "
-    print $ gfFinalTest dicoComplet12
+    print $ M.lookup (RuleM "A") $ gfFinalTest dicoComplet12
     putStr("\n")
 
 
@@ -90,5 +102,5 @@ dicoGF :: MinSpecGF
 dicoGF = createOriginalDicoGF dicoMin
 
 gfFinalTest :: Specification -> MinSpecGF
-gfFinalTest dicoComplet = gfEGFN (specToMinSpec $ dicoComplet) (createOriginalDicoGF (specToMinSpec dicoComplet)) 20
+gfFinalTest dicoComplet = gfEGFN (specToMinSpec $ dicoComplet) (createOriginalDicoGF (specToMinSpec dicoComplet)) 10
 
