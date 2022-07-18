@@ -106,16 +106,6 @@ main =
     print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet12)) (listInteger [1,1,3,13,73,501,4051,37633,394353,4596553])
     putStr("\n")
 
-
--- TESTS on MinSpec --
-dicoMin :: MinSpec
-dicoMin = M.fromList([(RuleM $ Rule "A",  ProdM ZM (ProdM ZM (ProdM ZM ZM)))])
-
-binaryTrees = M.fromList([(RuleM $ Rule "A", UnionM EpsM (ProdM ZM (ProdM (RuleM $ Rule "A") (RuleM $ Rule "A"))))])
-
-dicoGF :: MinSpecGF
-dicoGF = createOriginalDicoGF dicoMin
-
 gfCompute :: Specification -> MinSpecGF
 gfCompute dicoComplet = gfEGFN (specToMinSpec $ dicoComplet) (createOriginalDicoGF (specToMinSpec dicoComplet)) 10
 
