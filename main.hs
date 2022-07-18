@@ -74,36 +74,36 @@ main =
     putStr("|                       START                     |\n")
     putStr("---------------------------------------------------\n")
     print "Eps + Z : " 
-    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet1
-    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet1)) (listInteger [1,1,0,0,0,0,0,0,0,0])
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet1
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet1)) (listInteger [1,1,0,0,0,0,0,0,0,0])
     putStr("\n")
     print "Z * Z : " 
-    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet2
-    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet2)) (listInteger [0,0,2,0,0,0,0,0,0,0])
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet2
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet2)) (listInteger [0,0,2,0,0,0,0,0,0,0])
     putStr("\n")
     print "LABELED PLANAR BINARY TREES : " 
-    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet3
-    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet3)) (listInteger [0,1,0,6,0,240,0,25200,0,5080320])
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet3
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet3)) (listInteger [0,1,0,6,0,240,0,25200,0,5080320])
     putStr("\n")
     print "LABELED BINARY WORDS : "
-    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet5
-    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet5)) (listInteger [1,2,8,48,384,3840,46080,645120,10321920,185794560])
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet5
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet5)) (listInteger [1,2,8,48,384,3840,46080,645120,10321920,185794560])
     putStr("\n")
     print "Cayley Trees : " 
-    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet10
-    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet10)) (listInteger [0,1,2,9,64,625,7776,117649,2097152,43046721])
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet10
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet10)) (listInteger [0,1,2,9,64,625,7776,117649,2097152,43046721])
     putStr("\n")
     print "Set (Cycle Z) : "
-    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet11
-    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet11)) (listInteger [1,1,2,6,24,120,720,5040,40320,362880])
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet11
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet11)) (listInteger [1,1,2,6,24,120,720,5040,40320,362880])
     putStr("\n")
     print "Set (Set Z) : "
-    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet13
-    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet13)) (listInteger [1,1,2,5,15,52,203,877,4140,21147])
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet13
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet13)) (listInteger [1,1,2,5,15,52,203,877,4140,21147])
     putStr("\n")
     print "Set (Cycle Z), Permutations : "
-    myPrint $ M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet12
-    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfFinalTest dicoComplet12)) (listInteger [1,1,3,13,73,501,4051,37633,394353,4596553])
+    myPrint $ M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet12
+    print $ testFunction (Maybe.fromJust (M.lookup (RuleM $ Rule "A") $ gfCompute dicoComplet12)) (listInteger [1,1,3,13,73,501,4051,37633,394353,4596553])
     putStr("\n")
 
 
@@ -116,6 +116,6 @@ binaryTrees = M.fromList([(RuleM $ Rule "A", UnionM EpsM (ProdM ZM (ProdM (RuleM
 dicoGF :: MinSpecGF
 dicoGF = createOriginalDicoGF dicoMin
 
-gfFinalTest :: Specification -> MinSpecGF
-gfFinalTest dicoComplet = gfEGFN (specToMinSpec $ dicoComplet) (createOriginalDicoGF (specToMinSpec dicoComplet)) 10
+gfCompute :: Specification -> MinSpecGF
+gfCompute dicoComplet = gfEGFN (specToMinSpec $ dicoComplet) (createOriginalDicoGF (specToMinSpec dicoComplet)) 10
 
