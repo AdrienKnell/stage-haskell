@@ -1,132 +1,52 @@
-------------------------------------------------------------------------------------
+import completToMinimal.hs
 
+------ TESTS ------
 
+-- TESTS on Specification --
+dicoComplet0 :: Specification -- test with Epsilon
+dicoComplet0 = M.fromList [(Rule "A", Eps)]
 
-------- Once you've compiled the file, enter "main" to see the basic results.-------
+dicoComplet1 :: Specification -- test for non-recursive Union 
+dicoComplet1 = M.fromList [(Rule "A", Eps .+. Z)]
 
+dicoComplet2 :: Specification -- test for non-recursive Product
+dicoComplet2 = M.fromList [(Rule "A", Z .*. Z)]
 
+dicoComplet3 :: Specification -- test for simple recursive GF : PLANAR BINARY TREES
+dicoComplet3 = M.fromList([(Rule "A", Z .+. (Z .*. ((Rule "A") .*. (Rule "A"))))])
 
-------------------------------------------------------------------------------------
+dicoComplet4 :: Specification -- test for several equations A and B
+dicoComplet4 = M.fromList([(Rule "A", Eps .+. (Z .*. (Rule "B"))), (Rule "B", Eps .+. Z)])
 
+dicoComplet5 :: Specification -- tests for sequence without recursion: BINARY WORDS
+dicoComplet5 = M.fromList([(Rule "A", Seq (Z .+. Z))])
 
-type GF = [Int]
-  
-data Ast a = Eps
-         | Z
-         | Scalar Int
-         | Union (Ast a) (Ast a)
-         | Prod (Ast a) (Ast a)
-         | Seq (Ast a)
-         | Power (Ast a) Int
-         | PowerSet (Ast a)
-         | Derive (Ast a)
-         | Set (Ast a)
-         | Cycle (Ast a)
-         | Name a
-         | Rec (Ast a) (Ast a -> Ast a)
-         | JoyalRec [Int]
+dicoComplet6 :: Specification -- test for sequence with recursion : PLANE LABBELED TREES 
+dicoComplet6 = M.fromList([(Rule "A", Z .*. (Seq (Rule "A")))])
 
-instance (Show a) => Show (Ast a) where
-  show Z = "Z"
-  show Eps = "Ɛ"
-  show (Scalar i) = show i
-  show (Power x i) = show x ++ "^" ++ show i
-  show (Union x y) = "(" ++ (show x) ++ " + " ++ (show y) ++ ")"
-  show (Prod x y) = "(" ++ (show x) ++ " * " ++ (show y) ++ ")"
-  show (Seq x) = "Seq(" ++ (show x) ++ ")"
-  show (Derive x) = "Derive(" ++ (show x) ++ ")"  
-  show (Name x) = show x
-  show (Rec x f) = show x ++ " = " ++ show (f x)
+dicoComplet7 :: Specification -- test for sequence with recursion and simple recursion mixed up
+dicoComplet7 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Rule "A")))))]
 
-infixr 8 .*.
-infixr 7 .+.
-infixr 9 .=.
+dicoComplet8 :: Specification -- test for several sequence nested
+dicoComplet8 = M.fromList [(Rule "A", Eps .+. (Z .*. ((Rule "A") .*. (Seq (Seq (Rule "A"))))))]
 
-(.+.) :: Ast a -> Ast a -> Ast a
-(.+.) = Union
+dicoComplet9 :: Specification -- test for double recursion sequence
+dicoComplet9 =  M.fromList [(Rule "A", Seq ((Rule "A") .+. (Rule "A")))]
 
-(.*.) :: Ast a -> Ast a -> Ast a
-(.*.) = Prod
+dicoComplet10 :: Specification -- test for set : CAYLEY TREES
+dicoComplet10 = M.fromList [(Rule "A", Z .*. (Set $ Rule "A"))]
 
-(.=.) :: a -> (Ast a -> Ast a) -> Ast a
-(.=.) x eq = Rec (Name x) eq
+dicoComplet11 :: Specification -- test for set and cycle nested : 1/(1-Z)
+dicoComplet11 = M.fromList [(Rule "A", Set (Cycle Z))]
 
-binaryTrees :: Ast String
-binaryTrees = "B" .=. (\b -> Eps .+. Z .*. b .*. b)
+dicoComplet12 :: Specification -- test for set and seq nested : Permutations
+dicoComplet12 = M.fromList [(Rule "A", Set (Seq Z))]
 
-binaryWords :: Ast String
-binaryWords = "BW" .=. (\b -> Seq (Z .+. Z))
+dicoComplet13 :: Specification -- test for set and set nested : Set partitions
+dicoComplet13 = M.fromList [(Rule "A", Set (Set Z))]
 
-binaryWordsStartingWithABA :: Ast String
-binaryWordsStartingWithABA = (Power Z 3) .*. (Seq (Z .+. Z))
-
-multiplyZtimesZ :: Ast String
-multiplyZtimesZ = Z .*. Z .*. Z .*. Z
-
-class CombinatClassN a where
-  gfN :: a -> Int -> GF
-
-instance CombinatClassN (Ast a) where
-  gfN Eps n = take (n+1) $ 1 : repeat 0
-  gfN Z n = take (n+1) $ 0 : 1 : repeat 0
-  gfN (Union a b) n = take (n+1) $ zipWith (+) (gfN a (n+1)) (gfN b (n+1))
-  gfN (Prod a b) n = [sum $ zipWith (*) (take k (gfN a (n+1))) (reverse $ take k (gfN b (n+1))) | k <- [1..n+1]]
-  gfN (Scalar a) n = take (n+1) $ a : repeat 0
-  gfN (Power a 1) n = take (n+1) $ gfN a n
-  gfN (Power a i) n = take (n+1) $ gfN (Prod a (Power a (i-1))) (n+1)
-  gfN (Seq a) n = take (n+1) $ gfN (Rec Z (\b -> Seq a)) (n+1)
-  gfN (Cycle a) n = 1 : (take (n+1) $ gfN (Prod (Derive a) (Seq a)) n)
-  gfN (Derive a) n = tail $ take (n+2) $ gfN a (n+1)
-  gfN rule@(Rec name phi) n = take (n+1) $ foldr (\n -> \currGf-> gf' currGf $ (phi rule)) (repeat 0) [1..n+1] where
-    gf' currGf (Rec name _) = currGf
-    gf' _ Eps = 1 : repeat 0
-    gf' _ Z = 0 : 1 : repeat 0
-    gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
-    gf' currGf (Prod a b) = [sum $ zipWith (*) (take n (gf' currGf a)) (reverse $ take n (gf' currGf b)) | n <- [1..]]
-    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
-  
-class CombinatClassEGFN a where
-  gfEGFN :: a -> Int -> GF
-
-instance CombinatClassEGFN (Ast a) where
-  gfEGFN Eps n = take (n+1) $ 1 : repeat 0
-  gfEGFN Z n = take (n+1) $ 0 : 1 : repeat 0
-  gfEGFN (Union a b) n = take (n+1) $ zipWith (+) (gfEGFN a (n+1)) (gfEGFN b (n+1))
-  gfEGFN (Prod a b) n = [sum $ zipWith (*) (take n' (gfEGFN a (n+1))) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gfEGFN b (n+1)))) | n' <- [1..n+1]]
-  -- gfEGFN (Scalar a) n = take (n+1) $ a : repeat 0
-  -- gfEGFN (Power a 1) n = take (n+1) $ gfEGFN a n
-  -- gfEGFN (Power a i) n = take (n+1) $ gfEGFN (Prod a (Power a (i-1))) n 
-  gfEGFN (Derive a) n = tail $ gfEGFN a (n+1)
-  gfEGFN (Seq a) n = gfEGFN (Rec Z (\b -> Seq a)) n
-  gfEGFN (Set a) n = 0 : gfEGFN (Rec Z (\b -> Set a)) n
-  gfEGFN (Cycle a) n = 0 : (take (n+1) $ gfEGFN (Prod (Derive a) (Seq a)) n)
-  gfEGFN rule@(Rec name phi) n = take (n+1) $ foldr (\x -> \currGf-> gf' currGf (phi rule)) (repeat 0) [1..n+1] where
-    gf' currGf (Rec name _) = currGf
-    gf' currGf (JoyalRec l) = 1 : currGf
-    gf' _ Eps = 1 : repeat 0
-    gf' _ Z = 0 : 1 : repeat 0
-    gf' currGf (Derive a) = tail $ gf' currGf a 
-    gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
-    gf' currGf (Prod a b) = [sum $ zipWith (*) (take n' (gf' currGf a)) (zipWith (*) (coefBinomialArray (n'-1)) (reverse $ take n' (gf' currGf b))) | n' <- [1..]]
-    gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (JoyalRec [1]))) -- (Rec Z (\a -> a)) because we don't care 
-    gf' currGf (Cycle a) = 1 : gf' currGf (Prod (Derive a) (Seq a))
-    gf' currGf (Set a) = gf' currGf (Prod (Derive a) (Rec undefined undefined))
-
-coefBinomial :: Int -> Int -> Int
-coefBinomial k n = div (product [(n-k+1)..n]) (factorial k)
-
-coefBinomialArray :: Int -> [Int]
-coefBinomialArray n = [coefBinomial k n | k<-[0..n]]
-
-factorial :: Int -> Int
-factorial 0 = 1
-factorial x = (factorial (x-1)) * x
-
-applyCbinomial :: [Int] -> Int -> Int -> [Int]
-applyCbinomial [] _ _ =  []
-applyCbinomial (x:xs) index len = x * (coefBinomial index len) : (applyCbinomial xs (index+1) len)  
-
-
+dicoComplet14 :: Specification -- test for set and set nested : Surjections
+dicoComplet14 = M.fromList [(Rule "A", Cycle (Cycle Z))]
 
 main :: IO ()
 main = 
@@ -134,50 +54,41 @@ main =
     putStr("---------------------------------------------------\n")
     putStr("|                       START                     |\n")
     putStr("---------------------------------------------------\n")
-    print "UNLABELED binary Trees: " 
-    print $ gfN binaryTrees 15
+    print "Eps + Z : " 
+    print $ gfFinalTest dicoComplet1
     putStr("\n")
-    print "UNLABELED binary Words : "
-    print $ gfN binaryWords 15
+    print "Z * Z : " 
+    print $ gfFinalTest dicoComplet2
     putStr("\n")
-    print "UNLABELED binary Words starting by ABA : "
-    print $ gfN binaryWordsStartingWithABA 15
-    putStr("\n---------------------------------------------------- \n")
-    print "LABELED binary Trees: " 
-    print $ gfEGFN binaryTrees 12
+    print "LABELED PLANAR BINARY TREES : " 
+    print $ gfFinalTest dicoComplet3
     putStr("\n")
-    print "LABELED binary Words : "
-    print $ gfEGFN binaryWords 12
+    print "LABELED BINARY WORDS : "
+    print $ gfFinalTest dicoComplet5
     putStr("\n")
-    -- print "LABELED binary Words starting by ABA : "
-    -- print $ gfEGFN binaryWordsStartingWithABA 12
-    -- putStr("\n")
-    -- print "LABELED Set (Cycle z) : (the first coefficient is probably wrong ?) "
-    -- print $ gfEGFN (Set (Cycle Z)) 12
-    print "z times "
-    print $ gfEGFN multiplyZtimesZ 12
+    print "Cayley Trees : " 
+    print $ gfFinalTest dicoComplet10
+    putStr("\n")
+    print "Set (Cycle Z) : "
+    print $ gfFinalTest dicoComplet11
+    putStr("\n")
+    print "Set (Set Z) : "
+    print $ gfFinalTest dicoComplet13
+    putStr("\n")
+    print "Set (Cycle Z), Permutations : "
+    print $ gfFinalTest dicoComplet12
+    putStr("\n")
 
 
+-- TESTS on MinSpec --
+dicoMin :: MinSpec
+dicoMin = M.fromList([(RuleM $ Rule "A",  ProdM ZM (ProdM ZM (ProdM ZM ZM)))])
 
--- class CombinatClass a where
---   gf :: a -> GF
+binaryTrees = M.fromList([(RuleM $ Rule "A", UnionM EpsM (ProdM ZM (ProdM (RuleM $ Rule "A") (RuleM $ Rule "A"))))])
 
--- instance CombinatClass (Ast a) where
---   gf Eps = 1 : repeat 0
---   gf Z = 0 : 1 : repeat 0
---   gf (Union a b) = zipWith (+) (gf a) (gf b)
---   gf (Scalar a) = a : repeat 0
---   gf (Power a 1) = gf a
---   gf (Power a i) = gf $ Prod a (Power a (i-1)) 
---   gf (Prod a b) = [sum $ zipWith (*) (take n (gf a)) (reverse $ take n (gf b)) | n <- [1..]]
---   gf (Seq a) = gf $ Rec Z (\b -> Seq a)
---   gf rule@(Rec name phi) = [last . take n . foldr (\n -> \currGf-> gf' currGf (phi rule)) (repeat 0) $ [1..n] | n <- [1..]] where
---     gf' currGf (Rec name _) = currGf
---     gf' _ Eps = 1 : repeat 0
---     gf' _ Z = 0 : 1 : repeat 0
---     gf' _ (Scalar a) = a : repeat 0
---     gf' currGf (Power a 1) = gf' currGf a
---     gf' currGf (Power a i) = gf' currGf $ Prod a (Power a (i-1)) 
---     gf' currGf (Union a b) = zipWith (+) (gf' currGf a) (gf' currGf b)
---     gf' currGf (Prod a b) = [sum $ zipWith (*) (take n (gf' currGf a)) (reverse $ take n (gf' currGf b)) | n <- [1..]]
---     gf' currGf (Seq a) = gf' currGf (Union Eps (Prod a (Rec Z (\a -> a)))) -- (Rec Z (\a -> a)) because we don't care 
+dicoGF :: MinSpecGF
+dicoGF = createOriginalDicoGF dicoMin
+
+gfFinalTest :: Specification -> MinSpecGF
+gfFinalTest dicoComplet = gfEGFN (specToMinSpec $ dicoComplet) (createOriginalDicoGF (specToMinSpec dicoComplet)) 20
+
